@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="A private, offline-first personal fitness, nutrition and health tracker.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FitnessAI">
+  <meta name="format-detection" content="telephone=no">
+  <title>Fitness AI Hub</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-180.png">
+  <link rel="icon" href="./assets/icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div id="offlineBanner" class="offline-banner" hidden>You are offline. Changes remain saved on this device.</div>
+  <header class="topbar">
+    <div><p class="eyebrow" id="todayLabel"></p><h1>Fitness AI Hub</h1></div>
+    <button id="installButton" class="icon-button" type="button" hidden aria-label="Install app">Install</button>
+  </header>
+
+  <main class="app-shell">
+    <section id="dashboard" class="view active" aria-labelledby="dashboardTitle">
+      <div class="section-heading"><div><p class="eyebrow">Today</p><h2 id="dashboardTitle">Your health overview</h2></div><div id="healthScore" class="score-ring"><strong>0</strong><span>score</span></div></div>
+      <div class="metric-grid">
+        <article class="metric-card"><span>Calories</span><strong id="caloriesValue">0</strong><small id="caloriesGoal">of 2,000 kcal</small><div class="progress"><i id="caloriesProgress"></i></div></article>
+        <article class="metric-card"><span>Protein</span><strong id="proteinValue">0 g</strong><small id="proteinGoal">of 120 g</small><div class="progress"><i id="proteinProgress"></i></div></article>
+        <article class="metric-card"><span>Water</span><strong id="waterValue">0 ml</strong><small id="waterGoal">of 2,500 ml</small><div class="progress"><i id="waterProgress"></i></div></article>
+        <article class="metric-card"><span>Activity</span><strong id="activityValue">0 min</strong><small id="activityGoal">of 30 min</small><div class="progress"><i id="activityProgress"></i></div></article>
+      </div>
+      <article class="panel"><div class="panel-title"><div><p class="eyebrow">7-day trend</p><h3>Weight</h3></div><strong id="latestWeight">No data</strong></div><canvas id="weightChart" height="190" aria-label="Seven day weight chart"></canvas></article>
+      <div class="two-column">
+        <article class="panel"><div class="panel-title"><h3>Today’s meals</h3><button class="text-button" data-open="mealModal">Add</button></div><div id="mealSummary" class="empty-state">No meals logged today.</div></article>
+        <article class="panel"><div class="panel-title"><h3>Today’s activity</h3><button class="text-button" data-open="activityModal">Add</button></div><div id="activitySummary" class="empty-state">No activities logged today.</div></article>
+      </div>
+    </section>
+
+    <section id="log" class="view" aria-labelledby="logTitle"><div class="section-heading"><div><p class="eyebrow">Quick entry</p><h2 id="logTitle">Log health data</h2></div></div>
+      <div class="action-grid">
+        <button class="action-card" data-open="mealModal"><span>🍽️</span><strong>Meal</strong><small>Calories and macros</small></button>
+        <button class="action-card" data-open="activityModal"><span>🏃</span><strong>Activity</strong><small>Workout and movement</small></button>
+        <button class="action-card" data-open="bodyModal"><span>⚖️</span><strong>Body</strong><small>Weight and body fat</small></button>
+        <button class="action-card" data-open="sleepModal"><span>🌙</span><strong>Sleep</strong><small>Duration and quality</small></button>
+        <button class="action-card" id="addWater"><span>💧</span><strong>Water +250 ml</strong><small>One-tap hydration</small></button>
+      </div>
+      <article class="panel"><div class="panel-title"><h3>Recent entries</h3><button id="clearToday" class="danger-text">Clear today</button></div><div id="recentEntries"></div></article>
+    </section>
+
+    <section id="coach" class="view" aria-labelledby="coachTitle"><div class="section-heading"><div><p class="eyebrow">Private, on-device insights</p><h2 id="coachTitle">AI-style coach</h2></div></div>
+      <article class="coach-card"><div class="coach-avatar">AI</div><div><h3>Daily analysis</h3><p id="coachSummary">Add health data to receive a daily summary.</p></div></article>
+      <div id="coachInsights" class="insight-list"></div>
+      <article class="panel"><div class="panel-title"><h3>Ask your data</h3><span class="local-pill">Local</span></div><div class="chat-row"><input id="coachQuestion" type="text" placeholder="Example: How am I doing today?" maxlength="160"><button id="askCoach" class="primary-button">Ask</button></div><div id="coachAnswer" class="coach-answer">This first version uses private rules on your device, so no API key or paid AI service is required.</div></article>
+    </section>
+
+    <section id="settings" class="view" aria-labelledby="settingsTitle"><div class="section-heading"><div><p class="eyebrow">Personal goals</p><h2 id="settingsTitle">Settings and data</h2></div></div>
+      <form id="settingsForm" class="panel form-grid">
+        <label>Name<input id="profileName" type="text" maxlength="50" required></label>
+        <label>Daily calories (kcal)<input id="goalCalories" type="number" min="800" max="6000" required></label>
+        <label>Daily protein (g)<input id="goalProtein" type="number" min="20" max="500" required></label>
+        <label>Daily water (ml)<input id="goalWater" type="number" min="500" max="10000" step="100" required></label>
+        <label>Activity target (minutes)<input id="goalActivity" type="number" min="5" max="600" required></label>
+        <label>Target weight (kg)<input id="goalWeight" type="number" min="25" max="400" step="0.1" required></label>
+        <button class="primary-button full" type="submit">Save settings</button>
+      </form>
+      <article class="panel"><h3>Your data</h3><p class="muted">Data is stored only in this browser. Export a backup before clearing Safari data or changing phones.</p><div class="button-row"><button id="exportData" class="secondary-button">Export backup</button><label class="secondary-button file-button">Import backup<input id="importData" type="file" accept="application/json"></label><button id="resetData" class="danger-button">Reset app</button></div></article>
+      <article class="panel"><h3>App status</h3><dl class="status-list"><div><dt>Storage</dt><dd>On this device</dd></div><div><dt>Offline</dt><dd id="swStatus">Checking…</dd></div><div><dt>Version</dt><dd>1.0.0</dd></div></dl></article>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <button class="nav-button active" data-view="dashboard"><span>⌂</span>Home</button><button class="nav-button" data-view="log"><span>＋</span>Log</button><button class="nav-button" data-view="coach"><span>✦</span>Coach</button><button class="nav-button" data-view="settings"><span>⚙</span>Settings</button>
+  </nav>
+
+  <dialog id="mealModal"><form id="mealForm" class="modal-form"><div class="modal-header"><h3>Log meal</h3><button type="button" class="close-button" data-close>×</button></div><label>Meal name<input name="name" required maxlength="80" placeholder="Nasi lemak with chicken"></label><div class="form-grid compact"><label>Calories<input name="calories" type="number" min="0" max="10000" required></label><label>Protein (g)<input name="protein" type="number" min="0" max="1000" step="0.1" required></label><label>Carbs (g)<input name="carbs" type="number" min="0" max="1000" step="0.1" required></label><label>Fat (g)<input name="fat" type="number" min="0" max="1000" step="0.1" required></label></div><label>Date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save meal</button></form></dialog>
+  <dialog id="activityModal"><form id="activityForm" class="modal-form"><div class="modal-header"><h3>Log activity</h3><button type="button" class="close-button" data-close>×</button></div><label>Activity<select name="name"><option>Walking</option><option>Running</option><option>Cycling</option><option>Strength training</option><option>Swimming</option><option>Other</option></select></label><div class="form-grid compact"><label>Duration (min)<input name="duration" type="number" min="1" max="1440" required></label><label>Calories burned<input name="calories" type="number" min="0" max="10000" required></label><label>Distance (km)<input name="distance" type="number" min="0" max="1000" step="0.01" value="0"></label><label>Source<select name="source"><option>Manual</option><option>Garmin</option><option>Strava</option><option>Apple Fitness</option></select></label></div><label>Date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save activity</button></form></dialog>
+  <dialog id="bodyModal"><form id="bodyForm" class="modal-form"><div class="modal-header"><h3>Log body measurement</h3><button type="button" class="close-button" data-close>×</button></div><div class="form-grid compact"><label>Weight (kg)<input name="weight" type="number" min="25" max="400" step="0.1" required></label><label>Body fat (%)<input name="bodyFat" type="number" min="0" max="80" step="0.1"></label><label>Muscle mass (kg)<input name="muscle" type="number" min="0" max="250" step="0.1"></label><label>BMI<input name="bmi" type="number" min="5" max="100" step="0.1"></label></div><label>Date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save measurement</button></form></dialog>
+  <dialog id="sleepModal"><form id="sleepForm" class="modal-form"><div class="modal-header"><h3>Log sleep</h3><button type="button" class="close-button" data-close>×</button></div><label>Duration (hours)<input name="hours" type="number" min="0" max="24" step="0.1" required></label><label>Quality<select name="quality"><option value="5">Excellent</option><option value="4">Good</option><option value="3">Fair</option><option value="2">Poor</option><option value="1">Very poor</option></select></label><label>Wake date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save sleep</button></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js" defer></script>
+</body>
+</html>
