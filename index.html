@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#09131f">
   <meta name="description" content="Private fitness, nutrition and wellbeing tracker with AI coach">
   <title>Fitness AI Hub</title>
   <link rel="manifest" href="./manifest.webmanifest">
@@ -180,7 +180,7 @@
     <div class="tabs small" id="mealCatTabs"></div>
     <div id="mealOptions" class="meal-options"></div>
     <div id="mealSelected" class="selected-list"></div>
-    <div class="custom-add"><input id="customFoodName" placeholder="Something else? Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
+    <div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo (AI auto calorie)<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Needs free Groq key for vision. Add in Profile > Settings.</small></div><div class="custom-add"><input id="customFoodName" placeholder="Something else? Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
     <button class="btn primary" type="submit" id="logMealBtn">Log 0 item(s)</button>
   </form></dialog>
 

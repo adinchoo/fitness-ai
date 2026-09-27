@@ -290,8 +290,8 @@ function renderSelectedFoods(){
 
 $("#addCustomFood").onclick=()=>{
   const name=$("#customFoodName").value.trim();
-  const kcal=+$(" #customKcal".trim()?$("#customKcal").value:0) || +$("#customKcal").value;
-  const pro=+$(" #customPro".trim()?$("#customPro").value:0) || +$("#customPro").value;
+  const kcal=+$("#customKcal").value || 0;
+  const pro=+$("#customPro").value || 0;
   if(!name) return toast("Enter food name",true);
   selectedFoods.push({base:name, name, kcal:kcal||0, protein:pro||0, carbs:0, fat:0, category:"Custom", size:null});
   $("#customFoodName").value=""; $("#customKcal").value=""; $("#customPro").value="";
@@ -371,6 +371,31 @@ $("#workoutQuickForm").addEventListener("submit", async e=>{
   if(error) return toast(error.message,true);
   records.activities.unshift(data); e.currentTarget.reset(); e.currentTarget.closest("dialog").close(); render(); toast("Activity saved");
 });
+
+// FOOD PHOTO AI
+$("#foodPhotoInput").onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  $("#foodPhotoStatus").textContent = "🧠 AI analyzing food...";
+  try{
+    const result = await AI.analyzeFoodPhoto(file);
+    if(result.error){ $("#foodPhotoStatus").textContent = result.error; toast(result.error,true); return; }
+    $("#foodPhotoStatus").textContent = `Detected: ${result.name} ~ ${result.calories} kcal, ${result.protein_g}g protein`;
+    selectedFoods.push({
+      base: result.name,
+      name: result.name + " (AI)",
+      kcal: Math.round(result.calories),
+      protein: Math.round(result.protein_g||0),
+      carbs: Math.round(result.carbs_g||0),
+      fat: Math.round(result.fat_g||0),
+      category: "AI Scan",
+      size: null
+    });
+    renderMealOptions();
+    toast(`Added ${result.name}`);
+  }catch(err){ $("#foodPhotoStatus").textContent = err.message; toast(err.message,true); }
+  e.target.value = "";
+};
 
 // PHOTOS
 async function handlePhotoUpload(file){
