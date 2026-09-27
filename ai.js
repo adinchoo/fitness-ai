@@ -1,5 +1,5 @@
 
-// Free AI Engine - v3 with Food Photo Vision
+// Free AI Engine - v3.1 FIXED - Food Photo Vision with robust parser + Gemini support
 const AI = {
   getConfig(){ try{return JSON.parse(localStorage.getItem('fitness-ai-supabase-config')||'{}')}catch{return{}} },
 
@@ -90,52 +90,128 @@ const AI = {
     return data.choices?.[0]?.message?.content || this.localWeekly(profile, last7);
   },
 
+  // FIXED PHOTO ANALYZER - supports Groq (Meta Llama) AND Gemini
   async analyzeFoodPhoto(file){
     const cfg = this.getConfig();
-    if(!cfg.groqKey) return {error: "Add free Groq key in Profile > Settings to enable photo AI. Get free at console.groq.com (14k req/day free)"};
+    const hasGroq = !!cfg.groqKey;
+    const hasGemini = !!cfg.geminiKey;
+
+    if(!hasGroq && !hasGemini){
+      return {error: "Add Groq key (gsk_...) OR Gemini key (AIza...) in Profile > Settings. Get Groq free at console.groq.com, Gemini at aistudio.google.com/app/apikey"};
+    }
+
+    // Convert image to base64
     const base64 = await new Promise(res=>{
       const r = new FileReader();
       r.onload = ()=> res(r.result.split(',')[1]);
       r.readAsDataURL(file);
     });
-    const prompt = `You are a nutrition expert. Look at this food photo. Estimate dish name (Malaysian if possible like Nasi Kerabu etc), calories, protein_g, carbs_g, fat_g. Return ONLY valid JSON: {"name":"...","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10}. No other text.`;
-    try{
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-        method:"POST",
-        headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
-        body: JSON.stringify({
-          model:"meta-llama/llama-4-scout-17b-16e-instruct",
-          messages:[{role:"user", content:[{type:"text", text:prompt},{type:"image_url", image_url:{url:`data:image/jpeg;base64,${base64}`}}]}],
-          max_tokens:300
-        })
-      });
-      const data = await response.json();
-      let text = data.choices?.[0]?.message?.content || "";
-      // extract json
-      const match = text.match(/\{[\s\S]*\}/);
-      if(!match) throw new Error("No JSON: "+text);
-      const json = JSON.parse(match[0]);
-      return json;
-    }catch(e){
-      // fallback try smaller vision model
+
+    // Try Gemini first if available (best for food vision)
+    if(hasGemini){
       try{
-        const response2 = await fetch("https://api.groq.com/openai/v1/chat/completions",{
+        const gemResult = await this.geminiVision(base64, file.type);
+        if(!gemResult.error) return gemResult;
+        console.warn("gemini failed, trying groq", gemResult.error);
+      }catch(e){ console.warn(e) }
+    }
+
+    // Try Groq Meta Llama Vision
+    if(hasGroq){
+      try{
+        const groqResult = await this.groqVision(base64);
+        if(!groqResult.error) return groqResult;
+        return groqResult; // return error if both fail
+      }catch(e){
+        return {error: "Groq vision error: "+e.message};
+      }
+    }
+
+    return {error: "No working AI key found"};
+  },
+
+  async groqVision(base64){
+    const cfg = this.getConfig();
+    const prompt = `Analyze this food photo. You are a nutrition expert for Malaysian food.
+Return ONLY a JSON object with no markdown, no explanation, no extra text.
+Format exactly: {"name":"Dish Name","calories":500,"protein_g":30,"carbs_g":45,"fat_g":20}
+Estimate realistic calories and macros. For Malaysian foods like Nasi Kerabu, Nasi Lemak, Nasi Goreng, etc, use your knowledge.
+If not food, return {"name":"Not Food","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}
+JSON ONLY.`;
+
+    const modelsToTry = ["meta-llama/llama-4-scout-17b-16e-instruct", "llama-3.2-11b-vision-preview", "llama-3.2-90b-vision-preview"];
+
+    for(const model of modelsToTry){
+      try{
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions",{
           method:"POST",
           headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
           body: JSON.stringify({
-            model:"llama-3.2-11b-vision-preview",
+            model: model,
             messages:[{role:"user", content:[{type:"text", text:prompt},{type:"image_url", image_url:{url:`data:image/jpeg;base64,${base64}`}}]}],
-            max_tokens:300
+            max_tokens:500,
+            temperature:0.1
           })
         });
-        const data2 = await response2.json();
-        let text2 = data2.choices?.[0]?.message?.content || "";
-        const match2 = text2.match(/\{[\s\S]*\}/);
-        if(match2) return JSON.parse(match2[0]);
-        throw new Error(text2);
-      }catch(e2){
-        return {error: "AI parse failed: "+e2.message};
+        const data = await response.json();
+        if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+        let text = data.choices?.[0]?.message?.content || "";
+        console.log("Groq raw:", text);
+        const json = this.extractJson(text);
+        if(json && json.calories) return json;
+        throw new Error("No valid JSON in: "+text.slice(0,200));
+      }catch(e){
+        console.warn(`Model ${model} failed:`, e.message);
+        continue;
       }
+    }
+    return {error: "All Groq vision models failed. Try Gemini key instead (more reliable for photos)."};
+  },
+
+  async geminiVision(base64, mimeType){
+    const cfg = this.getConfig();
+    const mime = mimeType || "image/jpeg";
+    const prompt = `Analyze this food photo. Return ONLY JSON: {"name":"Dish Name","calories":500,"protein_g":30,"carbs_g":45,"fat_g":20}. Malaysian food expertise. No markdown.`;
+
+    try{
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime, data:base64}}]}],
+          generationConfig:{temperature:0.2, maxOutputTokens:500}
+        })
+      });
+      const data = await response.json();
+      if(data.error) throw new Error(data.error.message);
+      let text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log("Gemini raw:", text);
+      const json = this.extractJson(text);
+      if(json && json.calories !== undefined) return json;
+      throw new Error("No JSON: "+text.slice(0,200));
+    }catch(e){
+      return {error: "Gemini error: "+e.message};
+    }
+  },
+
+  extractJson(text){
+    // Remove markdown fences
+    let clean = text.replace(/```json/gi,'').replace(/```/g,'').trim();
+    // Find JSON object
+    const match = clean.match(/\{[\s\S]*?\}/);
+    if(!match) return null;
+    try{
+      let obj = JSON.parse(match[0]);
+      // Normalize keys
+      return {
+        name: obj.name || obj.dish || obj.food || "Meal",
+        calories: Math.round(obj.calories || obj.kcal || 0),
+        protein_g: Math.round(obj.protein_g || obj.protein || 0),
+        carbs_g: Math.round(obj.carbs_g || obj.carbs || 0),
+        fat_g: Math.round(obj.fat_g || obj.fat || 0)
+      };
+    }catch{
+      return null;
     }
   }
 };
