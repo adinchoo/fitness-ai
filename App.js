@@ -33,9 +33,9 @@ async function boot(){
 
 $("#setupForm").addEventListener("submit", async e=>{
   e.preventDefault();
-  const url=$("#setupUrl").value.trim().replace(/\/$/,""), key=$("#setupKey").value.trim(), groq=$("#setupGroq").value.trim();
+  const url=$("#setupUrl").value.trim().replace(/\/$/,""), key=$("#setupKey").value.trim(), groq=$("#setupGroq")?.value.trim()||"", gemini=$("#setupGemini")?.value.trim()||"";
   if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)){ toast("Invalid Supabase URL",true); return }
-  localStorage.setItem(CONFIG_KEY, JSON.stringify({url,key,groqKey:groq}));
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({url,key,groqKey:groq,geminiKey:gemini}));
   location.reload();
 });
 $("#changeConnection").onclick=()=>{ if(confirm("Change Supabase connection?")){ localStorage.removeItem(CONFIG_KEY); location.reload() } };
@@ -157,8 +157,10 @@ function switchView(id){
 }
 
 function updateAIMode(){
-  const has=config()?.groqKey;
-  $("#aiModePill").textContent=has?"Groq LLM":"Free AI";
+  const c=config()||{};
+  const hasGroq=!!c.groqKey;
+  const hasGemini=!!c.geminiKey;
+  $("#aiModePill").textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
 }
 
 function totalsToday(){

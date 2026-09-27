@@ -16,13 +16,14 @@
   <!-- SETUP -->
   <section id="setupScreen" class="center-screen hidden">
     <form id="setupForm" class="auth-card">
-      <div class="brand"><span>💪</span><div><h1>Connect Supabase</h1><p>One-time setup on this device</p></div></div>
-      <div class="notice">Use <strong>Project URL</strong> and <strong>publishable key</strong> (sb_publishable_...). Never service_role. Free AI works offline - no key needed.</div>
+      <div class="brand"><span>💪</span><div><h1>Connect Supabase</h1><p>One-time setup</p></div></div>
+      <div class="notice">Use <strong>Project URL</strong> and <strong>publishable key</strong> (sb_publishable_...). Never service_role. Free AI works without keys.</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
       <label>Publishable / anon key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_... or eyJ..."></textarea></label>
-      <label>Optional Groq API key (free AI upgrade)<input id="setupGroq" type="text" placeholder="gsk_... leave empty to use free local AI"></label>
+      <label>Groq API Key (Meta Llama - optional)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
+      <label>Gemini API Key (Google - optional, best for photo)<input id="setupGemini" type="text" placeholder="AIza..."></label>
       <button class="btn primary" type="submit">Save and connect</button>
-      <small class="muted">Keys stay in this browser only. Get free Groq key at console.groq.com</small>
+      <small class="muted">Keys stay in this browser only. Get free at console.groq.com or aistudio.google.com/app/apikey</small>
     </form>
   </section>
 
@@ -68,7 +69,6 @@
     </header>
 
     <main class="shell">
-      <!-- HOME -->
       <section id="homeView" class="view active">
         <div class="stats-grid">
           <article class="stat dark"><span>WEIGHT</span><strong id="weightValue">--</strong><small>kg</small><em id="weightSub"></em></article>
@@ -76,33 +76,27 @@
           <article class="stat"><span>CALORIES</span><strong id="calValue">0</strong><small>kcal</small><em id="calTarget">target 2200</em></article>
           <article class="stat"><span>PROTEIN</span><strong id="proValue">0</strong><small>g</small><em id="proTarget">target 180g</em></article>
         </div>
-
         <article class="panel ai-panel">
           <div class="panel-head"><h3>✦ YESTERDAY'S CHECK-IN</h3><span class="pill" id="aiModePill">Free AI</span></div>
           <p id="yesterdayCheckin" class="ai-text">Log your meals and workouts to get AI check-in...</p>
         </article>
-
         <article class="panel">
           <div class="panel-head"><h3>⚡ TODAY'S SESSION</h3><button class="link-btn" data-view-jump="workoutView">Change</button></div>
           <div id="todaySession" class="session-box">No session planned</div>
         </article>
-
         <div class="quick-grid">
           <button data-open="bodyDialog"><span>⚖️</span><strong>Log Weight</strong></button>
           <button data-open="mealDialog"><span>🍽️</span><strong>Log Meal</strong></button>
           <button data-open="workoutDialog"><span>💪</span><strong>Log Workout</strong></button>
           <button data-open="photoDialog"><span>📸</span><strong>Add Photo</strong></button>
         </div>
-
         <button class="link-btn" style="margin:16px auto;display:block" data-view-jump="historyView">View full history →</button>
-
         <article class="panel">
           <div class="panel-head"><h3>Today's logs</h3><button id="refreshButton" class="link-btn">Refresh</button></div>
           <div id="todayLogs"></div>
         </article>
       </section>
 
-      <!-- WORKOUT -->
       <section id="workoutView" class="view">
         <div class="hero"><h2>Workout</h2><select id="workoutTemplateSelect"></select></div>
         <div id="workoutEditor" class="panel"></div>
@@ -110,15 +104,13 @@
         <article class="panel" style="margin-top:16px"><h3>Recent sessions</h3><div id="recentWorkouts"></div></article>
       </section>
 
-      <!-- REPORT -->
       <section id="reportView" class="view">
-        <div class="hero"><h2>AI Progress Report</h2><button id="genReportBtn" class="btn primary small">Generate This Week's Report</button></div>
-        <p class="muted">Powered by free local AI — analyzes your last 7 days. Add Groq key for LLM upgrade.</p>
+        <div class="hero"><h2>AI Progress Report</h2><button id="genReportBtn" class="btn primary small">Generate Report</button></div>
+        <p class="muted">Powered by free local AI — add Groq or Gemini key for LLM upgrade.</p>
         <div id="weeklyReport" class="panel"></div>
         <div class="panel"><h3>Last 7 days summary</h3><div id="last7Summary"></div></div>
       </section>
 
-      <!-- HISTORY -->
       <section id="historyView" class="view">
         <h2>History</h2>
         <article class="panel">
@@ -136,7 +128,6 @@
         <article class="panel"><h3>All logs</h3><div id="allLogs"></div></article>
       </section>
 
-      <!-- PHOTOS -->
       <section id="photosView" class="view">
         <h2>Progress Photos</h2>
         <div class="panel">
@@ -152,15 +143,16 @@
         <div id="photoGrid" class="photo-grid"></div>
       </section>
 
-      <!-- PROFILE -->
       <section id="profileView" class="view">
-        <h2>Profile</h2>
+        <h2>Profile & Settings</h2>
         <form id="profileForm" class="panel form-grid"></form>
         <article class="panel">
-          <h3>Settings</h3>
-          <label>Groq API Key (Meta Llama - free)<input id="groqKeyInput" placeholder="gsk_..."></label><label>Gemini API Key (Google - free, better for food photo)<input id="geminiKeyInput" placeholder="AIza..."></label>
-          <div class="button-row"><button id="saveGroqBtn" class="btn ghost">Save Key</button><button id="exportButton" class="btn ghost">Export JSON</button><button id="deleteAccountData" class="btn danger">Delete health data</button></div>
-          <small class="muted">Free AI works without key. For better AI, get free key at console.groq.com (14k requests/day free)</small>
+          <h3>🤖 AI Keys - Paste here</h3>
+          <p class="muted" style="margin-bottom:12px">Add free keys to enable food photo AI + smarter coach. Leave empty to use free local AI.</p>
+          <label>Groq API Key (Meta Llama - free)<input id="groqKeyInput" placeholder="gsk_... from console.groq.com"></label>
+          <label style="margin-top:10px">Gemini API Key (Google - free, best for food photo)<input id="geminiKeyInput" placeholder="AIza... from aistudio.google.com/app/apikey"></label>
+          <div class="button-row" style="margin-top:14px"><button id="saveGroqBtn" class="btn primary">Save Keys</button><button id="exportButton" class="btn ghost">Export JSON</button><button id="deleteAccountData" class="btn danger">Delete health data</button></div>
+          <small class="muted" style="display:block;margin-top:12px">Get free keys:<br>• Groq (Meta): console.groq.com → API Keys → Create<br>• Gemini (Google): aistudio.google.com/app/apikey → Create API Key<br>Free AI works without any key.</small>
         </article>
       </section>
     </main>
@@ -171,6 +163,7 @@
       <button class="nav" data-view="reportView"><span>📊</span>Report</button>
       <button class="nav" data-view="historyView"><span>🕘</span>History</button>
       <button class="nav" data-view="photosView"><span>📸</span>Photos</button>
+      <button class="nav" data-view="profileView"><span>◎</span>Profile</button>
     </nav>
   </div>
 
@@ -180,7 +173,8 @@
     <div class="tabs small" id="mealCatTabs"></div>
     <div id="mealOptions" class="meal-options"></div>
     <div id="mealSelected" class="selected-list"></div>
-    <div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo (AI auto calorie)<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Needs free Groq key for vision. Add in Profile > Settings.</small></div><div class="custom-add"><input id="customFoodName" placeholder="Something else? Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
+    <div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo (AI auto calorie)<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Needs Groq OR Gemini key. Add in Profile > Settings.</small></div>
+    <div class="custom-add"><input id="customFoodName" placeholder="Something else? Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
     <button class="btn primary" type="submit" id="logMealBtn">Log 0 item(s)</button>
   </form></dialog>
 
@@ -198,7 +192,7 @@
   </form></dialog>
 
   <dialog id="photoDialog"><form class="dialog-form"><header><h3>Add Photo</h3><button data-close type="button">×</button></header>
-    <p class="muted">Photos are stored in Supabase Storage (private).</p>
+    <p class="muted">Photos stored in Supabase Storage (private).</p>
     <button type="button" class="btn primary" onclick="document.getElementById('photoFileInput').click()">Choose photo</button>
   </form></dialog>
 
