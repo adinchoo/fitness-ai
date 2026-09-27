@@ -140,10 +140,47 @@ function initUI(){
   buildProfileForm();
   $("#refreshButton").onclick=async()=>{ await loadRecords(); render(); toast("Refreshed") };
   $("#exportButton").onclick=exportJSON;
-  $("#saveGroqBtn").onclick=()=>{
-    const c=config()||{}; c.groqKey=$("#groqKeyInput").value.trim(); localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); toast("Groq key saved"); updateAIMode();
+  const saveAllKeys=()=>{
+    const c=config()||{};
+    const groq=$("#groqKeyInput")?.value.trim()||"";
+    const gemini=$("#geminiKeyInput")?.value.trim()||"";
+    if(gemini && !gemini.startsWith("AIza")){
+      toast("Gemini key must start with AIza... Get correct key at aistudio.google.com/app/apikey", true);
+      $("#keyStatus").textContent="❌ Gemini key wrong format. Should start with AIza..., not AQ.";
+      return;
+    }
+    c.groqKey=groq; c.geminiKey=gemini;
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(c));
+    toast("Keys saved: "+(groq?"Groq ":"")+(gemini?"Gemini":""));
+    $("#keyStatus").textContent="✅ Saved: "+(groq?"Groq ✔ ":"")+(gemini?"Gemini ✔":"")+" - Try Test Photo AI";
+    updateAIMode();
   };
-  $("#groqKeyInput").value=config()?.groqKey||"";
+  if($("#saveKeysBtn")) $("#saveKeysBtn").onclick=saveAllKeys;
+  if($("#saveGroqBtn")) $("#saveGroqBtn").onclick=saveAllKeys;
+  if($("#groqKeyInput")) $("#groqKeyInput").value=config()?.groqKey||"";
+  if($("#geminiKeyInput")) $("#geminiKeyInput").value=config()?.geminiKey||"";
+  if($("#testAIButton")) $("#testAIButton").onclick=async()=>{
+    const c=config()||{};
+    if(!c.geminiKey && !c.groqKey){ toast("Add a key first", true); return; }
+    $("#keyStatus").textContent="Testing...";
+    try{
+      const fakeFile = new Blob(["test"],{type:"image/jpeg"});
+      // Just test key validity via simple prompt, not photo
+      if(c.geminiKey){
+        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Say ok"}]}]})});
+        const data=await res.json();
+        if(data.error) throw new Error(data.error.message);
+        $("#keyStatus").textContent="✅ Gemini key works!";
+        toast("Gemini works!");
+      } else {
+        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+c.groqKey,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:"Say ok"}],max_tokens:10})});
+        const data=await res.json();
+        if(data.error) throw new Error(data.error.message);
+        $("#keyStatus").textContent="✅ Groq key works! But Groq vision deprecated, use Gemini for photos.";
+        toast("Groq works but use Gemini for photos");
+      }
+    }catch(e){ $("#keyStatus").textContent="❌ Key error: "+e.message; toast(e.message, true); }
+  };
   updateAIMode();
 }
 
@@ -156,352 +193,223 @@ function switchView(id){
   if(id==="reportView") renderLast7();
 }
 
+
 function updateAIMode(){
-  const c=config()||{};
-  const hasGroq=!!c.groqKey;
-  const hasGemini=!!c.geminiKey;
-  $("#aiModePill").textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
+  const c=config()||{}; const hasGroq=!!c.groqKey; const hasGemini=!!c.geminiKey;
+  const pill=$("#aiModePill"); if(!pill) return;
+  pill.textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
 }
 
-function totalsToday(){
-  const m=records.meals.filter(x=>isToday(x.logged_at));
-  const w=records.water.filter(x=>isToday(x.logged_at));
-  const a=records.activities.filter(x=>isToday(x.logged_at));
-  const ws=records.workoutSessions.filter(x=>isToday(x.logged_at));
-  const sum=(arr,k)=>arr.reduce((s,x)=>s+(Number(x[k])||0),0);
-  return {meals:m, water:w, activities:a, workoutSessions:ws, calories:sum(m,"calories"), protein:sum(m,"protein_g"), waterMl:sum(w,"amount_ml")};
-}
-function totalsYesterday(){
-  const m=records.meals.filter(x=>isYesterday(x.logged_at));
-  const a=records.activities.filter(x=>isYesterday(x.logged_at));
-  const ws=records.workoutSessions.filter(x=>isYesterday(x.logged_at));
-  const sum=(arr,k)=>arr.reduce((s,x)=>s+(Number(x[k])||0),0);
-  return {meals:m, activities:a, workoutSessions:ws, workoutCount:ws.length, calories:sum(m,"calories"), protein:sum(m,"protein_g"), targetCal:profile.target_calories, targetPro:profile.target_protein_g};
-}
-
-async function render(){
-  if(!profile) return;
-  const t=totalsToday();
-  $("#dateLabel").textContent=new Date().toLocaleDateString('en-MY',{weekday:'long', day:'numeric', month:'long'});
-  $("#greeting").textContent=`Good day, ${profile.full_name.split(' ')[0]} 👋`;
-  // weight
-  const latest=records.body[0];
-  const startW=profile.starting_weight_kg || (records.body.length? records.body[records.body.length-1].weight_kg : latest?.weight_kg);
-  const curW=latest?.weight_kg || 0;
-  const lost=startW && curW ? (startW - curW).toFixed(1) : 0;
-  $("#weightValue").textContent=curW||"--";
-  $("#weightSub").textContent=latest?dayStr(latest.logged_at):"";
-  $("#lostValue").textContent=lost;
-  $("#lostSub").textContent=startW?`from ${startW}kg`:"";
-  $("#calValue").textContent=t.calories;
-  $("#calTarget").textContent=`target ${profile.target_calories}`;
-  $("#proValue").textContent=Math.round(t.protein);
-  $("#proTarget").textContent=`target ${profile.target_protein_g}g`;
-  // today's session
-  $("#todaySession").innerHTML=t.workoutSessions.length? `${t.workoutSessions[0].session_name} • ${dayStr(t.workoutSessions[0].logged_at)}` : `No workout yet • <em style="color:var(--muted)">Plan: Push Day 6:30pm weights, 7:30pm treadmill</em>`;
-  // today's logs
-  $("#todayLogs").innerHTML=[...t.meals.map(x=>`<div class="row"><div><strong>${esc(x.meal_name)}</strong><small>${new Date(x.logged_at).toLocaleTimeString()}</small></div><span>${x.calories} kcal • ${x.protein_g}g</span></div>`), ...t.workoutSessions.map(s=>`<div class="row"><div><strong>${esc(s.session_name)}</strong><small>Workout</small></div><span>✓</span></div>`)].join("") || '<div class="empty">Nothing yet today. Log your first meal!</div>';
-  // meal dialog KPI
-  $("#mealKcal").textContent=`${t.calories}/${profile.target_calories}`;
-  $("#mealPro").textContent=`${Math.round(t.protein)}g/${profile.target_protein_g}g`;
-
-  // AI check-in
-  const y=totalsYesterday();
-  $("#yesterdayCheckin").textContent="Generating check-in...";
-  const checkinText=await AI.generateCheckin(profile, y, null);
-  $("#yesterdayCheckin").textContent=checkinText;
-
-  renderWorkoutEditor();
-  renderRecentWorkouts();
-  renderMealOptions();
-  renderPhotos();
-  updateAIMode();
-}
-
-// MEAL LOGGING with S/M/L
-function renderMealOptions(){
-  const list=FOOD_DB[currentCategory]||[];
-  $("#mealOptions").innerHTML=list.map((f,i)=>{
-    if(f.sizes){
-      const selected=selectedFoods.find(s=>s.base===f.name);
-      const activeSize=selected?.size||"M";
-      return `<div class="food-row ${selected?'selected':''}" data-idx="${i}">
-        <div><strong>${esc(f.name)}</strong><small>${selected?`${selected.kcal} kcal • ${selected.protein}g protein`:'Choose size S/M/L'}</small></div>
-        <div class="food-size">
-          ${Object.keys(f.sizes).map(sz=>`<button type="button" class="size-btn ${activeSize===sz && selected?'active':''}" data-size="${sz}" data-idx="${i}">${sz}</button>`).join("")}
-        </div>
-      </div>`;
-    } else {
-      const isSel=selectedFoods.some(s=>s.base===f.name && !s.size);
-      return `<div class="food-row ${isSel?'selected':''}" data-idx="${i}"><div><strong>${esc(f.name)}</strong><small>${f.kcal} kcal • ${f.protein||0}g protein</small></div><span>${isSel?'✓':'+'}</span></div>`;
-    }
-  }).join("");
-  // attach
-  $$('#mealOptions .food-row').forEach(row=>{
-    row.onclick=(e)=>{
-      if(e.target.classList.contains('size-btn')) return;
-      const idx=+row.dataset.idx;
-      const food=list[idx];
-      if(food.sizes){
-        // default M if no selection
-        toggleFood(food, "M");
-      } else {
-        toggleFood(food, null);
-      }
-    };
-  });
-  $$('#mealOptions .size-btn').forEach(btn=>{
-    btn.onclick=(e)=>{
-      e.stopPropagation();
-      const idx=+btn.dataset.idx;
-      const size=btn.dataset.size;
-      const food=list[idx];
-      toggleFood(food, size);
-    }
-  });
-  renderSelectedFoods();
-}
-
-function toggleFood(food, size){
-  const base=food.name;
-  if(food.sizes){
-    const sz=size||"M";
-    const data=food.sizes[sz];
-    const existingIdx=selectedFoods.findIndex(f=>f.base===base);
-    if(existingIdx>=0 && selectedFoods[existingIdx].size===sz){
-      selectedFoods.splice(existingIdx,1);
-    } else {
-      const entry={base, name:`${base} (${sz})`, kcal:data.kcal, protein:data.protein||data.protein_g||0, carbs:data.carbs||0, fat:data.fat||0, category:currentCategory, size:sz};
-      if(existingIdx>=0) selectedFoods[existingIdx]=entry; else selectedFoods.push(entry);
-    }
-  } else {
-    const existingIdx=selectedFoods.findIndex(f=>f.base===base && !f.size);
-    if(existingIdx>=0) selectedFoods.splice(existingIdx,1);
-    else selectedFoods.push({base, name:base, kcal:food.kcal, protein:food.protein||0, carbs:food.carbs||0, fat:food.fat||0, category:currentCategory, size:null});
-  }
-  renderMealOptions();
-}
-
-function renderSelectedFoods(){
-  const totalK=selectedFoods.reduce((s,f)=>s+f.kcal,0);
-  const totalP=selectedFoods.reduce((s,f)=>s+f.protein,0);
-  $("#mealSelected").innerHTML=selectedFoods.map((f,i)=>`<div class="row"><div><strong>${esc(f.name)}</strong><small>${f.kcal} kcal • ${f.protein}g</small></div><button type="button" class="link-btn" data-rem="${i}">Remove</button></div>`).join("");
-  $("#logMealBtn").textContent=`Log ${selectedFoods.length} item(s) • ${totalK} kcal, ${totalP}g protein`;
-  $$('#mealSelected [data-rem]').forEach(b=>b.onclick=()=>{ selectedFoods.splice(+b.dataset.rem,1); renderMealOptions(); });
-}
-
-$("#addCustomFood").onclick=()=>{
-  const name=$("#customFoodName").value.trim();
-  const kcal=+$("#customKcal").value || 0;
-  const pro=+$("#customPro").value || 0;
-  if(!name) return toast("Enter food name",true);
-  selectedFoods.push({base:name, name, kcal:kcal||0, protein:pro||0, carbs:0, fat:0, category:"Custom", size:null});
-  $("#customFoodName").value=""; $("#customKcal").value=""; $("#customPro").value="";
-  renderMealOptions();
-};
-
-$("#mealForm").addEventListener("submit", async e=>{
-  e.preventDefault();
-  if(!selectedFoods.length) return toast("Select foods first",true);
-  const btn=e.submitter; btn.disabled=true;
-  try{
-    const rows=selectedFoods.map(f=>({user_id:user.id, meal_name:f.name, meal_type:f.category, category:f.category, size:f.size, calories:f.kcal, protein_g:f.protein, carbs_g:f.carbs||0, fat_g:f.fat||0, logged_at:new Date().toISOString()}));
-    const {data,error}=await db.from("meal_logs").insert(rows).select();
-    if(error) throw error;
-    records.meals.unshift(...data.reverse());
-    selectedFoods=[]; renderMealOptions(); e.target.closest("dialog").close(); render(); toast(`Logged ${data.length} foods`);
-  }catch(err){ toast(err.message,true) } finally{ btn.disabled=false }
-});
-
-// WORKOUT
-function renderWorkoutEditor(){
-  const tmpl=$("#workoutTemplateSelect").value || "Push Day";
-  const exs=WORKOUT_TEMPLATES[tmpl]||[];
-  $("#workoutEditor").innerHTML=exs.map((ex,i)=>`
-    <div class="row" style="align-items:center">
-      <div style="flex:1"><strong>${esc(ex.name)}</strong><small>Set ${ex.sets} x ${ex.reps} reps</small></div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <label style="font-size:10px">kg<input data-ex="${i}" data-k="weight" type="number" value="${ex.weight}" style="width:64px"></label>
-        <label style="font-size:10px">reps<input data-ex="${i}" data-k="reps" type="number" value="${ex.reps}" style="width:56px"></label>
-        <label style="font-size:10px">sets<input data-ex="${i}" data-k="sets" type="number" value="${ex.sets}" style="width:48px"></label>
-      </div>
-    </div>
-  `).join("");
-}
-
-async function saveWorkout(){
-  const tmpl=$("#workoutTemplateSelect").value;
-  const btn=$("#saveWorkoutBtn"); btn.disabled=true;
-  try{
-    const inputs=$$('#workoutEditor input');
-    const exs=WORKOUT_TEMPLATES[tmpl].map((ex,i)=>{
-      const w=inputs.find(inp=>+inp.dataset.ex===i && inp.dataset.k==="weight")?.value||0;
-      const r=inputs.find(inp=>+inp.dataset.ex===i && inp.dataset.k==="reps")?.value||ex.reps;
-      const s=inputs.find(inp=>+inp.dataset.ex===i && inp.dataset.k==="sets")?.value||ex.sets;
-      return {name:ex.name, weight:+w, reps:+r, sets:+s};
-    });
-    const {data:session,error:e1}=await db.from("workout_sessions").insert({user_id:user.id, session_name:tmpl, logged_at:new Date().toISOString()}).select().single();
-    if(e1) throw e1;
-    const logs=exs.map(ex=>({session_id:session.id, user_id:user.id, exercise_name:ex.name, sets:ex.sets, reps:ex.reps, weight_kg:ex.weight}));
-    const {error:e2}=await db.from("workout_exercise_logs").insert(logs);
-    if(e2) throw e2;
-    records.workoutSessions.unshift(session);
-    renderRecentWorkouts(); toast("Workout saved"); switchView("homeView"); await loadRecords(); render();
-  }catch(err){ toast(err.message,true) } finally{ btn.disabled=false }
-}
-
-function renderRecentWorkouts(){
-  const el=$("#recentWorkouts");
-  if(!records.workoutSessions.length){ el.innerHTML='<div class="empty">No workouts yet</div>'; return }
-  el.innerHTML=records.workoutSessions.slice(0,5).map(s=>`<div class="row"><div><strong>${esc(s.session_name)}</strong><small>${new Date(s.logged_at).toLocaleString()}</small></div><span>✓</span></div>`).join("");
-}
-
-// BODY
-$("#bodyForm").addEventListener("submit", async e=>{
-  e.preventDefault();
-  const fd=new FormData(e.currentTarget);
-  const row={user_id:user.id, weight_kg:+fd.get("weight_kg"), logged_at:new Date(fd.get("logged_at")).toISOString()};
-  const {data,error}=await db.from("body_logs").insert(row).select().single();
-  if(error) return toast(error.message,true);
-  records.body.unshift(data); e.currentTarget.reset(); e.currentTarget.closest("dialog").close(); render(); toast("Weight logged");
-});
-$("#workoutQuickForm").addEventListener("submit", async e=>{
-  e.preventDefault();
-  const fd=new FormData(e.currentTarget);
-  const row={user_id:user.id, activity_name:fd.get("activity_name"), duration_minutes:+fd.get("duration_minutes"), calories_burned:+fd.get("calories_burned")||0, logged_at:new Date(fd.get("logged_at")).toISOString()};
-  const {data,error}=await db.from("activity_logs").insert(row).select().single();
-  if(error) return toast(error.message,true);
-  records.activities.unshift(data); e.currentTarget.reset(); e.currentTarget.closest("dialog").close(); render(); toast("Activity saved");
-});
-
-// FOOD PHOTO AI
-$("#foodPhotoInput").onchange = async (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  $("#foodPhotoStatus").textContent = "🧠 AI analyzing food...";
-  try{
-    const result = await AI.analyzeFoodPhoto(file);
-    if(result.error){ $("#foodPhotoStatus").textContent = result.error; toast(result.error,true); return; }
-    $("#foodPhotoStatus").textContent = `Detected: ${result.name} ~ ${result.calories} kcal, ${result.protein_g}g protein`;
-    selectedFoods.push({
-      base: result.name,
-      name: result.name + " (AI)",
-      kcal: Math.round(result.calories),
-      protein: Math.round(result.protein_g||0),
-      carbs: Math.round(result.carbs_g||0),
-      fat: Math.round(result.fat_g||0),
-      category: "AI Scan",
-      size: null
-    });
-    renderMealOptions();
-    toast(`Added ${result.name}`);
-  }catch(err){ $("#foodPhotoStatus").textContent = err.message; toast(err.message,true); }
-  e.target.value = "";
-};
-
-// PHOTOS
-async function handlePhotoUpload(file){
-  if(!file) return;
-  const type=$("#photoType").value||"Front";
-  toast("Uploading...");
-  try{
-    const path=`${user.id}/${Date.now()}_${file.name}`;
-    const {error:upErr}=await db.storage.from("progress-photos").upload(path, file);
-    if(upErr) throw upErr;
-    const {data:{publicUrl}} = db.storage.from("progress-photos").getPublicUrl(path);
-    // For private bucket, getPublicUrl still works but needs auth; we store path as url for simplicity use path
-    const {data,error}=await db.from("progress_photos").insert({user_id:user.id, photo_url:path, photo_type:type, logged_at:new Date().toISOString()}).select().single();
-    if(error) throw error;
-    records.photos.unshift(data); renderPhotos(); toast("Photo added");
-  }catch(err){ console.error(err); toast(err.message,true) }
-}
-function renderPhotos(){
-  const grid=$("#photoGrid");
-  if(!records.photos.length){ grid.innerHTML='<div class="empty">No photos yet. Add front/back progress pics.</div>'; return }
-  grid.innerHTML=records.photos.map(p=>{
-    const {data:{publicUrl}} = db.storage.from("progress-photos").getPublicUrl(p.photo_url);
-    // If bucket private, publicUrl will 403; try create signed url fallback - for now use publicUrl
-    return `<div class="panel" style="padding:8px"><img src="${publicUrl}" alt="${p.photo_type}" loading="lazy" onerror="this.style.display='none'"><div style="display:flex;justify-content:space-between;margin-top:6px"><small>${esc(p.photo_type)} • ${dayStr(p.logged_at)}</small></div></div>`;
-  }).join("");
-}
-
-// REPORT
 function getLast7Data(){
-  const now=new Date();
-  const last7=[];
+  const now=new Date(); const last7=[];
   for(let i=0;i<7;i++){ const d=new Date(now); d.setDate(now.getDate()-i); last7.push(dayStr(d)); }
+  const last14=[]; for(let i=0;i<14;i++){ const d=new Date(now); d.setDate(now.getDate()-i); last14.push(dayStr(d)); }
   const meals=records.meals.filter(m=>last7.includes(dayStr(m.logged_at)));
   const activities=records.activities.filter(a=>last7.includes(dayStr(a.logged_at)));
   const sessions=records.workoutSessions.filter(s=>last7.includes(dayStr(s.logged_at)));
   const body=records.body.filter(b=>last7.includes(dayStr(b.logged_at))).sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at));
+  const body14=records.body.filter(b=>last14.includes(dayStr(b.logged_at))).sort((a,b)=>new Date(a.logged_at)-new Date(b.logged_at));
   const water=records.water.filter(w=>last7.includes(dayStr(w.logged_at))).reduce((s,x)=>s+x.amount_ml,0);
   const totalCal=meals.reduce((s,x)=>s+x.calories,0);
   const totalPro=meals.reduce((s,x)=>s+Number(x.protein_g),0);
-  const daysLogged=new Set(meals.map(m=>dayStr(m.logged_at))).size;
+  // daily aggregates for chart
+  const dailyCal={}; const dailyPro={}; const dailyWeight={};
+  last7.slice().reverse().forEach(d=>{ dailyCal[d]=0; dailyPro[d]=0; });
+  meals.forEach(m=>{ const d=dayStr(m.logged_at); if(dailyCal[d]!==undefined){ dailyCal[d]+=m.calories; dailyPro[d]+=Number(m.protein_g||0); } });
+  body.forEach(b=>{ const d=dayStr(b.logged_at); dailyWeight[d]=b.weight_kg; });
   const weightChange=body.length>=2? (body[0].weight_kg - body[body.length-1].weight_kg) : 0;
-  const workoutDays=new Set(sessions.map(s=>dayStr(s.logged_at))).size;
-  return {meals, activities, sessions, bodyLogs:body, water, totalCal, totalPro, daysLogged, weightChange, workoutCount:sessions.length, workoutDays};
+  return {meals, activities, sessions, bodyLogs:body, body14, water, totalCal, totalPro, weightChange, workoutCount:sessions.length, dailyCal, dailyPro, dailyWeight, last7Dates:last7.slice().reverse()};
 }
+
+function drawWeightChart(canvasId, weights, labels, targetWeight){
+  const canvas=document.getElementById(canvasId); if(!canvas || !weights.length) return;
+  const ctx=canvas.getContext("2d");
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr; canvas.height=200*dpr;
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=200;
+  ctx.clearRect(0,0,W,H);
+  const pad=30;
+  const min=Math.min(...weights, targetWeight||999)-1;
+  const max=Math.max(...weights, targetWeight||0)+1;
+  const range=Math.max(max-min,2);
+  // grid
+  ctx.strokeStyle="#1e324a"; ctx.setLineDash([4,6]); ctx.lineWidth=1;
+  for(let i=0;i<4;i++){ const y=pad + (H-pad*2)*(i/3); ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad,y); ctx.stroke(); }
+  ctx.setLineDash([]);
+  // target line
+  if(targetWeight){
+    const yT=H - pad - ((targetWeight-min)/range)*(H-pad*2);
+    ctx.strokeStyle="#5de8b6"; ctx.setLineDash([6,6]); ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(pad,yT); ctx.lineTo(W-pad,yT); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle="#5de8b6"; ctx.font="10px Inter"; ctx.fillText(targetWeight+"kg target", W-90, yT-6);
+  }
+  // weight line
+  ctx.strokeStyle="#d4ff32"; ctx.lineWidth=2.5; ctx.beginPath();
+  weights.forEach((wt,i)=>{
+    const x=pad + (i/(weights.length-1||1))*(W-pad*2);
+    const y=H - pad - ((wt-min)/range)*(H-pad*2);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  // dots + projection dashed to target
+  ctx.fillStyle="#d4ff32";
+  weights.forEach((wt,i)=>{
+    const x=pad + (i/(weights.length-1||1))*(W-pad*2);
+    const y=H - pad - ((wt-min)/range)*(H-pad*2);
+    ctx.beginPath(); ctx.arc(x,y, i===weights.length-1?5:3.5,0,Math.PI*2); ctx.fill();
+    if(i===weights.length-1){ ctx.strokeStyle="#d4ff32"; ctx.fillStyle="#09131f"; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle="#d4ff32"; }
+  });
+  // projection to target if declining
+  if(targetWeight && weights.length>=2 && weights[weights.length-1] > targetWeight){
+    const lastW=weights[weights.length-1];
+    const firstW=weights[0];
+    const rate=(lastW-firstW)/(weights.length-1);
+    if(rate<0){
+      const lastX=pad + (W-pad*2);
+      const lastY=H - pad - ((lastW-min)/range)*(H-pad*2);
+      const targetY=H - pad - ((targetWeight-min)/range)*(H-pad*2);
+      const targetX=W-pad+20;
+      ctx.strokeStyle="#d4ff32"; ctx.setLineDash([6,6]); ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(targetX,targetY+60); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  // x labels
+  ctx.fillStyle="#6b819a"; ctx.font="10px Inter";
+  labels.forEach((lb,i)=>{
+    if(i%Math.ceil(labels.length/4)===0 || i===labels.length-1){
+      const x=pad + (i/(weights.length-1||1))*(W-pad*2);
+      ctx.fillText(lb, x-10, H-4);
+    }
+  });
+}
+
+function drawCalBar(canvasId, dailyCal, targetCal){
+  const canvas=document.getElementById(canvasId); if(!canvas) return;
+  const ctx=canvas.getContext("2d");
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*dpr; canvas.height=160*dpr;
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=160;
+  ctx.clearRect(0,0,W,H);
+  const vals=Object.values(dailyCal);
+  if(!vals.length) return;
+  const max=Math.max(...vals, targetCal, 500);
+  const pad=24; const barW=(W-pad*2)/vals.length - 8;
+  Object.entries(dailyCal).forEach(([date,val],i)=>{
+    const x=pad + i*((W-pad*2)/vals.length) + 4;
+    const h=Math.max(4, (val/max)*(H-40));
+    const y=H-24-h;
+    ctx.fillStyle= val>=targetCal*0.8 && val<=targetCal*1.2 ? "#5de8b6" : "#294058";
+    ctx.beginPath(); ctx.roundRect(x,y,barW,h,6); ctx.fill();
+    ctx.fillStyle="#99aabd"; ctx.font="9px Inter"; ctx.fillText(date.slice(5), x, H-6);
+  });
+  // target line
+  if(targetCal){
+    const yT=H-24 - (targetCal/max)*(H-40);
+    ctx.strokeStyle="#5de8b6"; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.moveTo(pad,yT); ctx.lineTo(W-pad,yT); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle="#5de8b6"; ctx.font="9px Inter"; ctx.fillText("target "+targetCal, W-70, yT-4);
+  }
+}
+
 function renderLast7(){
   const d=getLast7Data();
-  $("#last7Summary").innerHTML=`
+  const el=$("#last7Summary");
+  if(!el) return;
+  el.innerHTML=`
     <div class="row"><div>Meals logged</div><span>${d.meals.length} items</span></div>
     <div class="row"><div>Avg kcal</div><span>${d.meals.length?Math.round(d.totalCal/7):0} kcal</span></div>
     <div class="row"><div>Avg protein</div><span>${d.meals.length?Math.round(d.totalPro/7):0} g</span></div>
     <div class="row"><div>Workouts</div><span>${d.workoutCount} sessions</span></div>
     <div class="row"><div>Weight change</div><span>${d.weightChange.toFixed(1)} kg</span></div>
   `;
+  // draw report graphs if canvas exist
+  if(document.getElementById("reportWeightChart")){
+    const weights=d.last7Dates.map(date=>d.dailyWeight[date]||null).filter(v=>v!==null);
+    const labels=d.last7Dates.filter(date=>d.dailyWeight[date]).map(date=>date.slice(5));
+    // fallback to body logs sorted
+    let wts=weights;
+    let lbs=labels;
+    if(wts.length<2){
+      const sorted=[...records.body].sort((a,b)=>new Date(a.logged_at)-new Date(b.logged_at)).slice(-7);
+      wts=sorted.map(b=>b.weight_kg);
+      lbs=sorted.map(b=>dayStr(b.logged_at).slice(5));
+    }
+    if(wts.length) drawWeightChart("reportWeightChart", wts, lbs, profile.target_weight_kg);
+  }
+  if(document.getElementById("reportCalChart")){
+    drawCalBar("reportCalChart", d.dailyCal, profile.target_calories);
+  }
 }
+
 async function generateReport(){
-  const btn=$("#genReportBtn"); btn.disabled=true; btn.textContent="Generating...";
+  const btn=$("#genReportBtn"); if(btn){ btn.disabled=true; btn.textContent="Generating..."; }
   try{
     const last7=getLast7Data();
     const reportText=await AI.generateWeeklyReport(profile, last7);
-    $("#weeklyReport").innerHTML=`<div class="ai-text">${esc(reportText)}</div>`;
-  }catch(e){ toast(e.message,true) } finally{ btn.disabled=false; btn.textContent="Generate This Week's Report" }
+    const el=$("#weeklyReport"); if(el) el.innerHTML=`<div class="ai-text">${esc(reportText)}</div>`;
+    renderLast7();
+  }catch(e){ toast(e.message,true) } finally{ if(btn){ btn.disabled=false; btn.textContent="Generate This Week's Report" } }
 }
 
-// HISTORY
+// HISTORY with fixed graph like screenshot
 function renderHistory(){
   if(!records.body.length) return;
   const sorted=[...records.body].sort((a,b)=>new Date(a.logged_at)-new Date(b.logged_at));
-  const labels=sorted.map(b=>dayStr(b.logged_at).slice(5));
   const weights=sorted.map(b=>b.weight_kg);
-  // simple canvas chart
-  const canvas=$("#weightChart");
-  const ctx=canvas.getContext("2d");
-  const w=canvas.width=canvas.clientWidth*2; const h=canvas.height=200*2;
-  ctx.clearRect(0,0,w,h);
-  ctx.strokeStyle="#2a2a2a"; ctx.lineWidth=1;
-  for(let i=0;i<4;i++){ const y=(h/4)*i; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke() }
-  const min=Math.min(...weights)-1, max=Math.max(...weights)+1, range=max-min||1;
-  ctx.strokeStyle="#c6ff00"; ctx.lineWidth=3; ctx.beginPath();
-  weights.forEach((wt,i)=>{ const x=(i/(weights.length-1||1))* (w-40)+20; const y=h - ((wt-min)/range)*(h-40)-20; if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y) });
-  ctx.stroke();
-  ctx.fillStyle="#c6ff00"; weights.forEach((wt,i)=>{ const x=(i/(weights.length-1||1))* (w-40)+20; const y=h - ((wt-min)/range)*(h-40)-20; ctx.beginPath(); ctx.arc(x,y,6,0,Math.PI*2); ctx.fill() });
+  const labels=sorted.map(b=>dayStr(b.logged_at).slice(5));
+  drawWeightChart("weightChart", weights, labels, profile.target_weight_kg);
 
-  $("#hStart").textContent=(sorted[0]?.weight_kg||"--")+" kg";
-  $("#hNow").textContent=(sorted[sorted.length-1]?.weight_kg||"--")+" kg";
+  const first=sorted[0]?.weight_kg||0;
+  const last=sorted[sorted.length-1]?.weight_kg||0;
+  if($("#hStart")) $("#hStart").textContent=(first||"--")+" kg";
+  if($("#hNow")) $("#hNow").textContent=(last||"--")+" kg";
   const days=(new Date(sorted[sorted.length-1].logged_at)-new Date(sorted[0].logged_at))/86400000||1;
-  const rate=((sorted[sorted.length-1].weight_kg - sorted[0].weight_kg)/ (days/7)).toFixed(2);
-  $("#hRate").textContent=rate+" kg/wk";
+  const rate=((last - first)/ (days/7)).toFixed(2);
+  if($("#hRate")) $("#hRate").textContent=rate+" kg/wk";
 
-  // projection
-  const cur=sorted[sorted.length-1].weight_kg;
+  const cur=last;
   const avgLoss=parseFloat(rate);
-  $("#projection").innerHTML=`
-    <div><span>NEXT WEEK</span><strong>${(cur+avgLoss).toFixed(1)} kg</strong></div>
-    <div><span>IN 2 WEEKS</span><strong>${(cur+avgLoss*2).toFixed(1)} kg</strong></div>
-    <div><span>IN 4 WEEKS</span><strong>${(cur+avgLoss*4).toFixed(1)} kg</strong></div>
-  `;
-  // last 14
-  const last14=sorted.slice(-14);
-  $("#last14").innerHTML=last14.map(b=>`<div><span>${dayStr(b.logged_at).slice(5)}</span><strong>${b.weight_kg}</strong></div>`).join("");
+  const target=profile.target_weight_kg||83;
+  const remaining=cur-target;
+  const daysToGoal= avgLoss<0 ? Math.ceil(remaining / Math.abs(avgLoss) *7) : 0;
+  if($("#projection")){
+    const next1=(cur+avgLoss).toFixed(1);
+    const next2=(cur+avgLoss*2).toFixed(1);
+    const wedding=(cur+avgLoss*10).toFixed(1); // placeholder like screenshot
+    $("#projection").innerHTML=`
+      <div class="proj-card"><span>NEXT WEEK</span><strong>${next1}</strong><small>kg</small></div>
+      <div class="proj-card"><span>IN 2 WEEKS</span><strong>${next2}</strong><small>kg</small></div>
+      <div class="proj-card highlight"><span>WEDDING</span><strong>${wedding}</strong><small>kg</small></div>
+    `;
+    const sub=document.createElement("div");
+    sub.className="muted"; sub.style="margin-top:10px;font-size:12px";
+    sub.textContent=`On track to hit ${target}kg goal · ${daysToGoal>0?daysToGoal+"d to go":""}`;
+    $("#projection").parentElement.appendChild(sub);
+  }
+  // last 14 grid
+  const last14Map={}; sorted.forEach(b=>{ last14Map[dayStr(b.logged_at)]=b.weight_kg; });
+  const now=new Date();
+  const days14=[];
+  for(let i=13;i>=0;i--){ const d=new Date(now); d.setDate(now.getDate()-i); days14.push(d); }
+  if($("#last14")){
+    $("#last14").innerHTML=days14.map(d=>{
+      const ds=dayStr(d);
+      const w=last14Map[ds];
+      const dayName=d.toLocaleDateString('en',{weekday:'short'});
+      const dayNum=d.getDate();
+      return `<div class="${w?'has':''}"><span>${dayName}</span><span>${dayNum}</span><strong>${w? w.toFixed(2) : "—"}</strong></div>`;
+    }).join("");
+  }
 
-  $("#allLogs").innerHTML=[...records.meals, ...records.workoutSessions, ...records.body].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at)).slice(0,30).map(x=>{
-    const name=x.meal_name||x.session_name||`Weight ${x.weight_kg}kg`;
-    return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleString()}</small></div><span>${x.calories?x.calories+' kcal':''}</span></div>`;
-  }).join("") || '<div class="empty">No logs</div>';
+  if($("#allLogs")){
+    $("#allLogs").innerHTML=[...records.meals, ...records.workoutSessions, ...records.body].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at)).slice(0,30).map(x=>{
+      const name=x.meal_name||x.session_name||`Weight ${x.weight_kg}kg`;
+      return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleString()}</small></div><span>${x.calories?x.calories+' kcal':''}</span></div>`;
+    }).join("") || '<div class="empty">No logs</div>';
+  }
 }
 
 function buildProfileForm(){

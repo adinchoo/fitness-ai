@@ -45,3 +45,16 @@ dialog{width:min(92vw,560px);padding:0;border:1px solid var(--line);border-radiu
 .file-btn{position:relative;overflow:hidden;text-align:center;display:grid;place-items:center}
 canvas{width:100%!important}
 @media(min-width:720px){.grid2,.form-grid{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(4,1fr)}.quick-grid{grid-template-columns:repeat(4,1fr)}.bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:440px;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0}}
+
+.bottom-nav.five{grid-template-columns:repeat(5,1fr)} .bottom-nav.five .nav{font-size:11px} .bottom-nav.five .nav span{font-size:22px}
+/* Report graphs + screenshot-style projection */
+#reportWeightChart, #reportCalChart, #weightChart{width:100%!important; border-radius:12px; background:#0a1a2a; border:1px solid #1e324a}
+.proj-card{background:#0a1a2a;border:1px solid #1e324a;border-radius:14px;padding:12px;text-align:left}
+.proj-card span{font-size:10px;color:#6b819a;letter-spacing:.08em;display:block;margin-bottom:6px}
+.proj-card strong{font-size:26px;display:block} .proj-card small{font-size:12px;color:#99aabd}
+.proj-card.highlight{border-color:#5de8b6}
+.projection-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.last14{grid-template-columns:repeat(7,1fr)} .last14 div{display:grid;gap:2px; padding:10px 4px}
+.last14 div.has{background:#122235;border-color:#294058}
+.last14 div strong{font-size:11px}
+@media(max-width:480px){.projection-grid{grid-template-columns:1fr 1fr 1fr; gap:8px} .proj-card strong{font-size:20px}}

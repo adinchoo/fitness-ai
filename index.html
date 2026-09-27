@@ -4,7 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09131f">
-  <meta name="description" content="Private fitness, nutrition and wellbeing tracker with AI coach">
   <title>Fitness AI Hub</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
@@ -13,55 +12,50 @@
 <body>
   <div id="toast" class="toast"></div>
 
-  <!-- SETUP -->
   <section id="setupScreen" class="center-screen hidden">
     <form id="setupForm" class="auth-card">
       <div class="brand"><span>💪</span><div><h1>Connect Supabase</h1><p>One-time setup</p></div></div>
-      <div class="notice">Use <strong>Project URL</strong> and <strong>publishable key</strong> (sb_publishable_...). Never service_role. Free AI works without keys.</div>
+      <div class="notice">Use Project URL and publishable key. Free AI works without keys.</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
-      <label>Publishable / anon key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_... or eyJ..."></textarea></label>
-      <label>Groq API Key (Meta Llama - optional)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
-      <label>Gemini API Key (Google - optional, best for photo)<input id="setupGemini" type="text" placeholder="AIza..."></label>
+      <label>Publishable key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_..."></textarea></label>
+      <label>Groq Key (Meta Llama)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
+      <label>Gemini Key (Google vision)<input id="setupGemini" type="text" placeholder="AIzaSy..."></label>
       <button class="btn primary" type="submit">Save and connect</button>
-      <small class="muted">Keys stay in this browser only. Get free at console.groq.com or aistudio.google.com/app/apikey</small>
     </form>
   </section>
 
-  <!-- AUTH -->
   <section id="authScreen" class="center-screen hidden">
     <div class="auth-card wide">
-      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub</h1><p>Stay fit, healthy, tracked</p></div></div>
+      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub</h1><p>Stay fit, healthy</p></div></div>
       <div class="tabs"><button class="tab active" data-auth-tab="login" type="button">Sign in</button><button class="tab" data-auth-tab="signup" type="button">Create account</button></div>
       <form id="loginForm" class="stack auth-panel active">
         <label>Email<input name="email" type="email" required></label>
-        <label>Password<input name="password" type="password" required minlength="8"></label>
+        <label>Password<input name="password" type="password" required></label>
         <button class="btn primary" type="submit">Sign in</button>
         <button id="forgotButton" class="link-btn" type="button">Forgot password?</button>
       </form>
       <form id="signupForm" class="stack auth-panel">
         <div class="grid2">
-          <label>Full name<input name="full_name" required maxlength="80"></label>
-          <label>Date of birth<input name="date_of_birth" type="date" required></label>
+          <label>Full name<input name="full_name" required></label>
+          <label>DOB<input name="date_of_birth" type="date" required></label>
           <label>Sex<select name="sex_at_birth" required><option value="">Select</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></label>
-          <label>Height (cm)<input name="height_cm" type="number" min="80" max="250" step="0.1" required></label>
-          <label>Current weight (kg)<input name="current_weight_kg" type="number" min="25" max="400" step="0.1" required></label>
-          <label>Target weight (kg)<input name="target_weight_kg" type="number" min="25" max="400" step="0.1" required></label>
-          <label>Goal<select name="primary_goal" required><option value="">Select</option><option value="lose_weight">Lose weight</option><option value="maintain">Maintain</option><option value="gain_muscle">Gain muscle</option><option value="improve_fitness">Improve fitness</option><option value="general_health">General health</option></select></label>
+          <label>Height cm<input name="height_cm" type="number" required></label>
+          <label>Current kg<input name="current_weight_kg" type="number" required></label>
+          <label>Target kg<input name="target_weight_kg" type="number" required></label>
+          <label>Goal<select name="primary_goal" required><option>lose_weight</option><option>maintain</option><option>gain_muscle</option><option>improve_fitness</option><option>general_health</option></select></label>
           <label>Activity<select name="activity_level" required><option value="sedentary">Mostly seated</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="very_active">Very active</option></select></label>
           <label>Cal target<input name="target_calories" type="number" value="2200" required></label>
-          <label>Protein target (g)<input name="target_protein_g" type="number" value="180" required></label>
+          <label>Protein g<input name="target_protein_g" type="number" value="180" required></label>
         </div>
         <label>Email<input name="email" type="email" required></label>
         <label>Password<input name="password" type="password" required minlength="8"></label>
         <label>Confirm<input name="confirm_password" type="password" required minlength="8"></label>
-        <label class="check"><input name="consent" type="checkbox" required><span>Personal tracker, not medical advice</span></label>
         <button class="btn primary" type="submit">Create account</button>
       </form>
-      <button id="changeConnection" class="link-btn subtle" type="button">Change Supabase connection</button>
+      <button id="changeConnection" class="link-btn subtle" type="button">Change Supabase</button>
     </div>
   </section>
 
-  <!-- APP -->
   <div id="app" class="hidden">
     <header class="topbar">
       <div><p class="eyebrow" id="dateLabel"></p><h1 id="greeting">Good day</h1></div>
@@ -72,25 +66,24 @@
       <section id="homeView" class="view active">
         <div class="stats-grid">
           <article class="stat dark"><span>WEIGHT</span><strong id="weightValue">--</strong><small>kg</small><em id="weightSub"></em></article>
-          <article class="stat dark"><span>LOST SO FAR</span><strong id="lostValue">0</strong><small>kg</small><em id="lostSub"></em></article>
-          <article class="stat"><span>CALORIES</span><strong id="calValue">0</strong><small>kcal</small><em id="calTarget">target 2200</em></article>
-          <article class="stat"><span>PROTEIN</span><strong id="proValue">0</strong><small>g</small><em id="proTarget">target 180g</em></article>
+          <article class="stat dark"><span>LOST</span><strong id="lostValue">0</strong><small>kg</small><em id="lostSub"></em></article>
+          <article class="stat"><span>CALORIES</span><strong id="calValue">0</strong><small>kcal</small><em id="calTarget"></em></article>
+          <article class="stat"><span>PROTEIN</span><strong id="proValue">0</strong><small>g</small><em id="proTarget"></em></article>
         </div>
         <article class="panel ai-panel">
-          <div class="panel-head"><h3>✦ YESTERDAY'S CHECK-IN</h3><span class="pill" id="aiModePill">Free AI</span></div>
-          <p id="yesterdayCheckin" class="ai-text">Log your meals and workouts to get AI check-in...</p>
+          <div class="panel-head"><h3>✦ YESTERDAY</h3><span class="pill" id="aiModePill">Free AI</span></div>
+          <p id="yesterdayCheckin" class="ai-text"></p>
         </article>
         <article class="panel">
           <div class="panel-head"><h3>⚡ TODAY'S SESSION</h3><button class="link-btn" data-view-jump="workoutView">Change</button></div>
-          <div id="todaySession" class="session-box">No session planned</div>
+          <div id="todaySession" class="session-box"></div>
         </article>
         <div class="quick-grid">
           <button data-open="bodyDialog"><span>⚖️</span><strong>Log Weight</strong></button>
           <button data-open="mealDialog"><span>🍽️</span><strong>Log Meal</strong></button>
           <button data-open="workoutDialog"><span>💪</span><strong>Log Workout</strong></button>
-          <button data-open="photoDialog"><span>📸</span><strong>Add Photo</strong></button>
+          <button data-view-jump="photosView"><span>📸</span><strong>Progress Photos</strong></button>
         </div>
-        <button class="link-btn" style="margin:16px auto;display:block" data-view-jump="historyView">View full history →</button>
         <article class="panel">
           <div class="panel-head"><h3>Today's logs</h3><button id="refreshButton" class="link-btn">Refresh</button></div>
           <div id="todayLogs"></div>
@@ -101,14 +94,32 @@
         <div class="hero"><h2>Workout</h2><select id="workoutTemplateSelect"></select></div>
         <div id="workoutEditor" class="panel"></div>
         <button id="saveWorkoutBtn" class="btn primary full">Save Workout</button>
-        <article class="panel" style="margin-top:16px"><h3>Recent sessions</h3><div id="recentWorkouts"></div></article>
+        <article class="panel" style="margin-top:16px"><h3>Recent</h3><div id="recentWorkouts"></div></article>
       </section>
 
       <section id="reportView" class="view">
-        <div class="hero"><h2>AI Progress Report</h2><button id="genReportBtn" class="btn primary small">Generate Report</button></div>
-        <p class="muted">Powered by free local AI — add Groq or Gemini key for LLM upgrade.</p>
-        <div id="weeklyReport" class="panel"></div>
-        <div class="panel"><h3>Last 7 days summary</h3><div id="last7Summary"></div></div>
+        <div class="hero"><h2>Report</h2><button id="genReportBtn" class="btn primary small">Generate AI Report</button></div>
+        
+        <article class="panel">
+          <h3>WEIGHT JOURNEY - LAST 7 DAYS</h3>
+          <canvas id="reportWeightChart" height="200"></canvas>
+          <div class="stats-grid" style="margin-top:12px">
+            <div class="stat dark small"><span>START WEEK</span><strong id="rStart">--</strong></div>
+            <div class="stat dark small"><span>NOW</span><strong id="rNow">--</strong></div>
+            <div class="stat small"><span>CHANGE</span><strong id="rChange">--</strong></div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <h3>CALORIES - LAST 7 DAYS</h3>
+          <canvas id="reportCalChart" height="160"></canvas>
+          <div id="last7Summary" style="margin-top:12px"></div>
+        </article>
+
+        <article class="panel ai-panel">
+          <div class="panel-head"><h3>✦ AI WEEKLY INSIGHT</h3></div>
+          <div id="weeklyReport" class="ai-text">Tap Generate to get AI report...</div>
+        </article>
       </section>
 
       <section id="historyView" class="view">
@@ -119,21 +130,20 @@
           <div class="stats-grid" style="margin-top:12px">
             <div class="stat dark small"><span>START</span><strong id="hStart">--</strong></div>
             <div class="stat dark small"><span>NOW</span><strong id="hNow">--</strong></div>
-            <div class="stat small"><span>AVG / WEEK</span><strong id="hRate">--</strong></div>
+            <div class="stat small"><span>AVG</span><strong id="hRate">--</strong></div>
           </div>
           <div class="projection-grid" id="projection"></div>
-          <h4 style="margin-top:16px">LAST 14 DAYS</h4>
-          <div id="last14" class="last14"></div>
+          <div id="last14" class="last14" style="margin-top:12px"></div>
         </article>
         <article class="panel"><h3>All logs</h3><div id="allLogs"></div></article>
       </section>
 
       <section id="photosView" class="view">
-        <h2>Progress Photos</h2>
+        <h2>Photos</h2>
         <div class="panel">
           <div class="grid2">
-            <button class="btn ghost" id="takePhotoBtn">📸 Take Photo</button>
-            <label class="btn ghost file-btn">Choose from library<input type="file" id="photoFileInput" accept="image/*" hidden></label>
+            <button class="btn ghost" id="takePhotoBtn">📸 Take</button>
+            <label class="btn ghost file-btn">Library<input type="file" id="photoFileInput" accept="image/*" hidden></label>
           </div>
           <div style="margin-top:12px;display:flex;gap:8px">
             <select id="photoType"><option>Front</option><option>Back</option><option>Side</option></select>
@@ -144,56 +154,56 @@
       </section>
 
       <section id="profileView" class="view">
-        <h2>Profile & Settings</h2>
+        <h2>Profile</h2>
         <form id="profileForm" class="panel form-grid"></form>
         <article class="panel">
-          <h3>🤖 AI Keys - Paste here</h3>
-          <p class="muted" style="margin-bottom:12px">Add free keys to enable food photo AI + smarter coach. Leave empty to use free local AI.</p>
-          <label>Groq API Key (Meta Llama - free)<input id="groqKeyInput" placeholder="gsk_... from console.groq.com"></label>
-          <label style="margin-top:10px">Gemini API Key (Google - free, best for food photo)<input id="geminiKeyInput" placeholder="AIza... from aistudio.google.com/app/apikey"></label>
-          <div class="button-row" style="margin-top:14px"><button id="saveGroqBtn" class="btn primary">Save Keys</button><button id="exportButton" class="btn ghost">Export JSON</button><button id="deleteAccountData" class="btn danger">Delete health data</button></div>
-          <small class="muted" style="display:block;margin-top:12px">Get free keys:<br>• Groq (Meta): console.groq.com → API Keys → Create<br>• Gemini (Google): aistudio.google.com/app/apikey → Create API Key<br>Free AI works without any key.</small>
+          <h3>🤖 AI Keys</h3>
+          <p class="muted">Paste 1 key to enable food photo AI. Gemini best for photos.</p>
+          <label>Groq API Key (Meta Llama) - gsk_...<input id="groqKeyInput" placeholder="gsk_..."></label>
+          <label style="margin-top:10px">Gemini API Key (Google) - must start with AIza...<input id="geminiKeyInput" placeholder="AIzaSy..."></label>
+          <div class="button-row" style="margin-top:14px"><button id="saveKeysBtn" class="btn primary" type="button">Save Keys</button><button id="testAIButton" class="btn ghost" type="button">Test Photo AI</button></div>
+          <small id="keyStatus" class="muted" style="display:block;margin-top:10px"></small>
+          <div class="button-row" style="margin-top:14px"><button id="exportButton" class="btn ghost" type="button">Export JSON</button><button id="deleteAccountData" class="btn danger" type="button">Delete health data</button></div>
+          <small class="muted" style="display:block;margin-top:12px">Get keys:<br>• Groq: console.groq.com → API Keys<br>• Gemini: aistudio.google.com/app/apikey → Create API Key (starts with AIza... not AQ.)</small>
+          <button class="btn ghost full" style="margin-top:12px" type="button" data-view-jump="photosView">📸 Go to Progress Photos</button>
         </article>
       </section>
     </main>
 
-    <nav class="bottom-nav">
+    <nav class="bottom-nav five">
       <button class="nav active" data-view="homeView"><span>⌂</span>Home</button>
       <button class="nav" data-view="workoutView"><span>💪</span>Workout</button>
       <button class="nav" data-view="reportView"><span>📊</span>Report</button>
       <button class="nav" data-view="historyView"><span>🕘</span>History</button>
-      <button class="nav" data-view="photosView"><span>📸</span>Photos</button>
       <button class="nav" data-view="profileView"><span>◎</span>Profile</button>
     </nav>
   </div>
 
-  <!-- DIALOGS -->
   <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal</h3><button data-close type="button">×</button></header>
-    <div class="kpi-row"><div><span>TODAY'S KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>TODAY'S PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div>
+    <div class="kpi-row"><div><span>KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div>
     <div class="tabs small" id="mealCatTabs"></div>
     <div id="mealOptions" class="meal-options"></div>
     <div id="mealSelected" class="selected-list"></div>
-    <div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo (AI auto calorie)<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Needs Groq OR Gemini key. Add in Profile > Settings.</small></div>
-    <div class="custom-add"><input id="customFoodName" placeholder="Something else? Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
-    <button class="btn primary" type="submit" id="logMealBtn">Log 0 item(s)</button>
+    <div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Add Gemini key in Profile for photo AI (AIza...).</small></div>
+    <div class="custom-add"><input id="customFoodName" placeholder="Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
+    <button class="btn primary" type="submit" id="logMealBtn">Log 0</button>
   </form></dialog>
 
   <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight</h3><button data-close type="button">×</button></header>
-    <label>Weight (kg)<input name="weight_kg" type="number" step="0.1" required></label>
+    <label>Weight kg<input name="weight_kg" type="number" step="0.1" required></label>
     <label>Date<input name="logged_at" type="datetime-local" required></label>
     <button class="btn primary">Save</button>
   </form></dialog>
 
   <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header>
-    <label>Activity<input name="activity_name" required placeholder="Running"></label>
-    <div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Calories burned<input name="calories_burned" type="number"></label></div>
+    <label>Activity<input name="activity_name" required></label>
+    <div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div>
     <label>Date<input name="logged_at" type="datetime-local" required></label>
     <button class="btn primary">Save</button>
   </form></dialog>
 
   <dialog id="photoDialog"><form class="dialog-form"><header><h3>Add Photo</h3><button data-close type="button">×</button></header>
-    <p class="muted">Photos stored in Supabase Storage (private).</p>
-    <button type="button" class="btn primary" onclick="document.getElementById('photoFileInput').click()">Choose photo</button>
+    <button type="button" class="btn primary" onclick="document.getElementById('photoFileInput').click()">Choose</button>
   </form></dialog>
 
   <script src="./foods.js"></script>
