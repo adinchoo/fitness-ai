@@ -1,84 +1,209 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#07111f">
-  <meta name="description" content="A private, offline-first personal fitness, nutrition and health tracker.">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="FitnessAI">
-  <meta name="format-detection" content="telephone=no">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="description" content="Private fitness, nutrition and wellbeing tracker with AI coach">
   <title>Fitness AI Hub</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./assets/icons/icon-180.png">
-  <link rel="icon" href="./assets/icons/icon-192.png">
   <link rel="stylesheet" href="./styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-  <div id="offlineBanner" class="offline-banner" hidden>You are offline. Changes remain saved on this device.</div>
-  <header class="topbar">
-    <div><p class="eyebrow" id="todayLabel"></p><h1>Fitness AI Hub</h1></div>
-    <button id="installButton" class="icon-button" type="button" hidden aria-label="Install app">Install</button>
-  </header>
+  <div id="toast" class="toast"></div>
 
-  <main class="app-shell">
-    <section id="dashboard" class="view active" aria-labelledby="dashboardTitle">
-      <div class="section-heading"><div><p class="eyebrow">Today</p><h2 id="dashboardTitle">Your health overview</h2></div><div id="healthScore" class="score-ring"><strong>0</strong><span>score</span></div></div>
-      <div class="metric-grid">
-        <article class="metric-card"><span>Calories</span><strong id="caloriesValue">0</strong><small id="caloriesGoal">of 2,000 kcal</small><div class="progress"><i id="caloriesProgress"></i></div></article>
-        <article class="metric-card"><span>Protein</span><strong id="proteinValue">0 g</strong><small id="proteinGoal">of 120 g</small><div class="progress"><i id="proteinProgress"></i></div></article>
-        <article class="metric-card"><span>Water</span><strong id="waterValue">0 ml</strong><small id="waterGoal">of 2,500 ml</small><div class="progress"><i id="waterProgress"></i></div></article>
-        <article class="metric-card"><span>Activity</span><strong id="activityValue">0 min</strong><small id="activityGoal">of 30 min</small><div class="progress"><i id="activityProgress"></i></div></article>
-      </div>
-      <article class="panel"><div class="panel-title"><div><p class="eyebrow">7-day trend</p><h3>Weight</h3></div><strong id="latestWeight">No data</strong></div><canvas id="weightChart" height="190" aria-label="Seven day weight chart"></canvas></article>
-      <div class="two-column">
-        <article class="panel"><div class="panel-title"><h3>Today’s meals</h3><button class="text-button" data-open="mealModal">Add</button></div><div id="mealSummary" class="empty-state">No meals logged today.</div></article>
-        <article class="panel"><div class="panel-title"><h3>Today’s activity</h3><button class="text-button" data-open="activityModal">Add</button></div><div id="activitySummary" class="empty-state">No activities logged today.</div></article>
-      </div>
-    </section>
+  <!-- SETUP -->
+  <section id="setupScreen" class="center-screen hidden">
+    <form id="setupForm" class="auth-card">
+      <div class="brand"><span>💪</span><div><h1>Connect Supabase</h1><p>One-time setup on this device</p></div></div>
+      <div class="notice">Use <strong>Project URL</strong> and <strong>publishable key</strong> (sb_publishable_...). Never service_role. Free AI works offline - no key needed.</div>
+      <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
+      <label>Publishable / anon key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_... or eyJ..."></textarea></label>
+      <label>Optional Groq API key (free AI upgrade)<input id="setupGroq" type="text" placeholder="gsk_... leave empty to use free local AI"></label>
+      <button class="btn primary" type="submit">Save and connect</button>
+      <small class="muted">Keys stay in this browser only. Get free Groq key at console.groq.com</small>
+    </form>
+  </section>
 
-    <section id="log" class="view" aria-labelledby="logTitle"><div class="section-heading"><div><p class="eyebrow">Quick entry</p><h2 id="logTitle">Log health data</h2></div></div>
-      <div class="action-grid">
-        <button class="action-card" data-open="mealModal"><span>🍽️</span><strong>Meal</strong><small>Calories and macros</small></button>
-        <button class="action-card" data-open="activityModal"><span>🏃</span><strong>Activity</strong><small>Workout and movement</small></button>
-        <button class="action-card" data-open="bodyModal"><span>⚖️</span><strong>Body</strong><small>Weight and body fat</small></button>
-        <button class="action-card" data-open="sleepModal"><span>🌙</span><strong>Sleep</strong><small>Duration and quality</small></button>
-        <button class="action-card" id="addWater"><span>💧</span><strong>Water +250 ml</strong><small>One-tap hydration</small></button>
-      </div>
-      <article class="panel"><div class="panel-title"><h3>Recent entries</h3><button id="clearToday" class="danger-text">Clear today</button></div><div id="recentEntries"></div></article>
-    </section>
-
-    <section id="coach" class="view" aria-labelledby="coachTitle"><div class="section-heading"><div><p class="eyebrow">Private, on-device insights</p><h2 id="coachTitle">AI-style coach</h2></div></div>
-      <article class="coach-card"><div class="coach-avatar">AI</div><div><h3>Daily analysis</h3><p id="coachSummary">Add health data to receive a daily summary.</p></div></article>
-      <div id="coachInsights" class="insight-list"></div>
-      <article class="panel"><div class="panel-title"><h3>Ask your data</h3><span class="local-pill">Local</span></div><div class="chat-row"><input id="coachQuestion" type="text" placeholder="Example: How am I doing today?" maxlength="160"><button id="askCoach" class="primary-button">Ask</button></div><div id="coachAnswer" class="coach-answer">This first version uses private rules on your device, so no API key or paid AI service is required.</div></article>
-    </section>
-
-    <section id="settings" class="view" aria-labelledby="settingsTitle"><div class="section-heading"><div><p class="eyebrow">Personal goals</p><h2 id="settingsTitle">Settings and data</h2></div></div>
-      <form id="settingsForm" class="panel form-grid">
-        <label>Name<input id="profileName" type="text" maxlength="50" required></label>
-        <label>Daily calories (kcal)<input id="goalCalories" type="number" min="800" max="6000" required></label>
-        <label>Daily protein (g)<input id="goalProtein" type="number" min="20" max="500" required></label>
-        <label>Daily water (ml)<input id="goalWater" type="number" min="500" max="10000" step="100" required></label>
-        <label>Activity target (minutes)<input id="goalActivity" type="number" min="5" max="600" required></label>
-        <label>Target weight (kg)<input id="goalWeight" type="number" min="25" max="400" step="0.1" required></label>
-        <button class="primary-button full" type="submit">Save settings</button>
+  <!-- AUTH -->
+  <section id="authScreen" class="center-screen hidden">
+    <div class="auth-card wide">
+      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub</h1><p>Stay fit, healthy, tracked</p></div></div>
+      <div class="tabs"><button class="tab active" data-auth-tab="login" type="button">Sign in</button><button class="tab" data-auth-tab="signup" type="button">Create account</button></div>
+      <form id="loginForm" class="stack auth-panel active">
+        <label>Email<input name="email" type="email" required></label>
+        <label>Password<input name="password" type="password" required minlength="8"></label>
+        <button class="btn primary" type="submit">Sign in</button>
+        <button id="forgotButton" class="link-btn" type="button">Forgot password?</button>
       </form>
-      <article class="panel"><h3>Your data</h3><p class="muted">Data is stored only in this browser. Export a backup before clearing Safari data or changing phones.</p><div class="button-row"><button id="exportData" class="secondary-button">Export backup</button><label class="secondary-button file-button">Import backup<input id="importData" type="file" accept="application/json"></label><button id="resetData" class="danger-button">Reset app</button></div></article>
-      <article class="panel"><h3>App status</h3><dl class="status-list"><div><dt>Storage</dt><dd>On this device</dd></div><div><dt>Offline</dt><dd id="swStatus">Checking…</dd></div><div><dt>Version</dt><dd>1.0.0</dd></div></dl></article>
-    </section>
-  </main>
+      <form id="signupForm" class="stack auth-panel">
+        <div class="grid2">
+          <label>Full name<input name="full_name" required maxlength="80"></label>
+          <label>Date of birth<input name="date_of_birth" type="date" required></label>
+          <label>Sex<select name="sex_at_birth" required><option value="">Select</option><option>Male</option><option>Female</option><option>Prefer not to say</option></select></label>
+          <label>Height (cm)<input name="height_cm" type="number" min="80" max="250" step="0.1" required></label>
+          <label>Current weight (kg)<input name="current_weight_kg" type="number" min="25" max="400" step="0.1" required></label>
+          <label>Target weight (kg)<input name="target_weight_kg" type="number" min="25" max="400" step="0.1" required></label>
+          <label>Goal<select name="primary_goal" required><option value="">Select</option><option value="lose_weight">Lose weight</option><option value="maintain">Maintain</option><option value="gain_muscle">Gain muscle</option><option value="improve_fitness">Improve fitness</option><option value="general_health">General health</option></select></label>
+          <label>Activity<select name="activity_level" required><option value="sedentary">Mostly seated</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="very_active">Very active</option></select></label>
+          <label>Cal target<input name="target_calories" type="number" value="2200" required></label>
+          <label>Protein target (g)<input name="target_protein_g" type="number" value="180" required></label>
+        </div>
+        <label>Email<input name="email" type="email" required></label>
+        <label>Password<input name="password" type="password" required minlength="8"></label>
+        <label>Confirm<input name="confirm_password" type="password" required minlength="8"></label>
+        <label class="check"><input name="consent" type="checkbox" required><span>Personal tracker, not medical advice</span></label>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+      <button id="changeConnection" class="link-btn subtle" type="button">Change Supabase connection</button>
+    </div>
+  </section>
 
-  <nav class="bottom-nav" aria-label="Main navigation">
-    <button class="nav-button active" data-view="dashboard"><span>⌂</span>Home</button><button class="nav-button" data-view="log"><span>＋</span>Log</button><button class="nav-button" data-view="coach"><span>✦</span>Coach</button><button class="nav-button" data-view="settings"><span>⚙</span>Settings</button>
-  </nav>
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div><p class="eyebrow" id="dateLabel"></p><h1 id="greeting">Good day</h1></div>
+      <button id="logoutButton" class="btn ghost small">Sign out</button>
+    </header>
 
-  <dialog id="mealModal"><form id="mealForm" class="modal-form"><div class="modal-header"><h3>Log meal</h3><button type="button" class="close-button" data-close>×</button></div><label>Meal name<input name="name" required maxlength="80" placeholder="Nasi lemak with chicken"></label><div class="form-grid compact"><label>Calories<input name="calories" type="number" min="0" max="10000" required></label><label>Protein (g)<input name="protein" type="number" min="0" max="1000" step="0.1" required></label><label>Carbs (g)<input name="carbs" type="number" min="0" max="1000" step="0.1" required></label><label>Fat (g)<input name="fat" type="number" min="0" max="1000" step="0.1" required></label></div><label>Date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save meal</button></form></dialog>
-  <dialog id="activityModal"><form id="activityForm" class="modal-form"><div class="modal-header"><h3>Log activity</h3><button type="button" class="close-button" data-close>×</button></div><label>Activity<select name="name"><option>Walking</option><option>Running</option><option>Cycling</option><option>Strength training</option><option>Swimming</option><option>Other</option></select></label><div class="form-grid compact"><label>Duration (min)<input name="duration" type="number" min="1" max="1440" required></label><label>Calories burned<input name="calories" type="number" min="0" max="10000" required></label><label>Distance (km)<input name="distance" type="number" min="0" max="1000" step="0.01" value="0"></label><label>Source<select name="source"><option>Manual</option><option>Garmin</option><option>Strava</option><option>Apple Fitness</option></select></label></div><label>Date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save activity</button></form></dialog>
-  <dialog id="bodyModal"><form id="bodyForm" class="modal-form"><div class="modal-header"><h3>Log body measurement</h3><button type="button" class="close-button" data-close>×</button></div><div class="form-grid compact"><label>Weight (kg)<input name="weight" type="number" min="25" max="400" step="0.1" required></label><label>Body fat (%)<input name="bodyFat" type="number" min="0" max="80" step="0.1"></label><label>Muscle mass (kg)<input name="muscle" type="number" min="0" max="250" step="0.1"></label><label>BMI<input name="bmi" type="number" min="5" max="100" step="0.1"></label></div><label>Date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save measurement</button></form></dialog>
-  <dialog id="sleepModal"><form id="sleepForm" class="modal-form"><div class="modal-header"><h3>Log sleep</h3><button type="button" class="close-button" data-close>×</button></div><label>Duration (hours)<input name="hours" type="number" min="0" max="24" step="0.1" required></label><label>Quality<select name="quality"><option value="5">Excellent</option><option value="4">Good</option><option value="3">Fair</option><option value="2">Poor</option><option value="1">Very poor</option></select></label><label>Wake date and time<input name="date" type="datetime-local" required></label><button class="primary-button" type="submit">Save sleep</button></form></dialog>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <main class="shell">
+      <!-- HOME -->
+      <section id="homeView" class="view active">
+        <div class="stats-grid">
+          <article class="stat dark"><span>WEIGHT</span><strong id="weightValue">--</strong><small>kg</small><em id="weightSub"></em></article>
+          <article class="stat dark"><span>LOST SO FAR</span><strong id="lostValue">0</strong><small>kg</small><em id="lostSub"></em></article>
+          <article class="stat"><span>CALORIES</span><strong id="calValue">0</strong><small>kcal</small><em id="calTarget">target 2200</em></article>
+          <article class="stat"><span>PROTEIN</span><strong id="proValue">0</strong><small>g</small><em id="proTarget">target 180g</em></article>
+        </div>
+
+        <article class="panel ai-panel">
+          <div class="panel-head"><h3>✦ YESTERDAY'S CHECK-IN</h3><span class="pill" id="aiModePill">Free AI</span></div>
+          <p id="yesterdayCheckin" class="ai-text">Log your meals and workouts to get AI check-in...</p>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><h3>⚡ TODAY'S SESSION</h3><button class="link-btn" data-view-jump="workoutView">Change</button></div>
+          <div id="todaySession" class="session-box">No session planned</div>
+        </article>
+
+        <div class="quick-grid">
+          <button data-open="bodyDialog"><span>⚖️</span><strong>Log Weight</strong></button>
+          <button data-open="mealDialog"><span>🍽️</span><strong>Log Meal</strong></button>
+          <button data-open="workoutDialog"><span>💪</span><strong>Log Workout</strong></button>
+          <button data-open="photoDialog"><span>📸</span><strong>Add Photo</strong></button>
+        </div>
+
+        <button class="link-btn" style="margin:16px auto;display:block" data-view-jump="historyView">View full history →</button>
+
+        <article class="panel">
+          <div class="panel-head"><h3>Today's logs</h3><button id="refreshButton" class="link-btn">Refresh</button></div>
+          <div id="todayLogs"></div>
+        </article>
+      </section>
+
+      <!-- WORKOUT -->
+      <section id="workoutView" class="view">
+        <div class="hero"><h2>Workout</h2><select id="workoutTemplateSelect"></select></div>
+        <div id="workoutEditor" class="panel"></div>
+        <button id="saveWorkoutBtn" class="btn primary full">Save Workout</button>
+        <article class="panel" style="margin-top:16px"><h3>Recent sessions</h3><div id="recentWorkouts"></div></article>
+      </section>
+
+      <!-- REPORT -->
+      <section id="reportView" class="view">
+        <div class="hero"><h2>AI Progress Report</h2><button id="genReportBtn" class="btn primary small">Generate This Week's Report</button></div>
+        <p class="muted">Powered by free local AI — analyzes your last 7 days. Add Groq key for LLM upgrade.</p>
+        <div id="weeklyReport" class="panel"></div>
+        <div class="panel"><h3>Last 7 days summary</h3><div id="last7Summary"></div></div>
+      </section>
+
+      <!-- HISTORY -->
+      <section id="historyView" class="view">
+        <h2>History</h2>
+        <article class="panel">
+          <h3>WEIGHT JOURNEY</h3>
+          <canvas id="weightChart" height="200"></canvas>
+          <div class="stats-grid" style="margin-top:12px">
+            <div class="stat dark small"><span>START</span><strong id="hStart">--</strong></div>
+            <div class="stat dark small"><span>NOW</span><strong id="hNow">--</strong></div>
+            <div class="stat small"><span>AVG / WEEK</span><strong id="hRate">--</strong></div>
+          </div>
+          <div class="projection-grid" id="projection"></div>
+          <h4 style="margin-top:16px">LAST 14 DAYS</h4>
+          <div id="last14" class="last14"></div>
+        </article>
+        <article class="panel"><h3>All logs</h3><div id="allLogs"></div></article>
+      </section>
+
+      <!-- PHOTOS -->
+      <section id="photosView" class="view">
+        <h2>Progress Photos</h2>
+        <div class="panel">
+          <div class="grid2">
+            <button class="btn ghost" id="takePhotoBtn">📸 Take Photo</button>
+            <label class="btn ghost file-btn">Choose from library<input type="file" id="photoFileInput" accept="image/*" hidden></label>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <select id="photoType"><option>Front</option><option>Back</option><option>Side</option></select>
+            <input type="file" id="hiddenCameraInput" accept="image/*" capture="environment" hidden>
+          </div>
+        </div>
+        <div id="photoGrid" class="photo-grid"></div>
+      </section>
+
+      <!-- PROFILE -->
+      <section id="profileView" class="view">
+        <h2>Profile</h2>
+        <form id="profileForm" class="panel form-grid"></form>
+        <article class="panel">
+          <h3>Settings</h3>
+          <label>Groq API Key (free, optional)<input id="groqKeyInput" placeholder="gsk_..."></label>
+          <div class="button-row"><button id="saveGroqBtn" class="btn ghost">Save Key</button><button id="exportButton" class="btn ghost">Export JSON</button><button id="deleteAccountData" class="btn danger">Delete health data</button></div>
+          <small class="muted">Free AI works without key. For better AI, get free key at console.groq.com (14k requests/day free)</small>
+        </article>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav active" data-view="homeView"><span>⌂</span>Home</button>
+      <button class="nav" data-view="workoutView"><span>💪</span>Workout</button>
+      <button class="nav" data-view="reportView"><span>📊</span>Report</button>
+      <button class="nav" data-view="historyView"><span>🕘</span>History</button>
+      <button class="nav" data-view="photosView"><span>📸</span>Photos</button>
+    </nav>
+  </div>
+
+  <!-- DIALOGS -->
+  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal</h3><button data-close type="button">×</button></header>
+    <div class="kpi-row"><div><span>TODAY'S KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>TODAY'S PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div>
+    <div class="tabs small" id="mealCatTabs"></div>
+    <div id="mealOptions" class="meal-options"></div>
+    <div id="mealSelected" class="selected-list"></div>
+    <div class="custom-add"><input id="customFoodName" placeholder="Something else? Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
+    <button class="btn primary" type="submit" id="logMealBtn">Log 0 item(s)</button>
+  </form></dialog>
+
+  <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight</h3><button data-close type="button">×</button></header>
+    <label>Weight (kg)<input name="weight_kg" type="number" step="0.1" required></label>
+    <label>Date<input name="logged_at" type="datetime-local" required></label>
+    <button class="btn primary">Save</button>
+  </form></dialog>
+
+  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header>
+    <label>Activity<input name="activity_name" required placeholder="Running"></label>
+    <div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Calories burned<input name="calories_burned" type="number"></label></div>
+    <label>Date<input name="logged_at" type="datetime-local" required></label>
+    <button class="btn primary">Save</button>
+  </form></dialog>
+
+  <dialog id="photoDialog"><form class="dialog-form"><header><h3>Add Photo</h3><button data-close type="button">×</button></header>
+    <p class="muted">Photos are stored in Supabase Storage (private).</p>
+    <button type="button" class="btn primary" onclick="document.getElementById('photoFileInput').click()">Choose photo</button>
+  </form></dialog>
+
+  <script src="./foods.js"></script>
+  <script src="./ai.js"></script>
   <script src="./app.js" defer></script>
 </body>
 </html>

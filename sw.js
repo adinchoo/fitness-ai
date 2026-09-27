@@ -1,5 +1,9 @@
-const CACHE="fitness-ai-hub-v1.0.0";
-const APP=["./","./index.html","./styles.css","./app.js","./manifest.webmanifest","./assets/icons/icon-180.png","./assets/icons/icon-192.png","./assets/icons/icon-512.png","./assets/icons/icon-maskable-512.png"];
-self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP)).then(()=>self.skipWaiting()))});
-self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith("fitness-ai-hub-")&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
-self.addEventListener("fetch",event=>{if(event.request.method!=="GET")return;event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));return response}).catch(()=>caches.match(event.request).then(cached=>cached||caches.match("./index.html"))))});
+const CACHE="fitness-ai-v2-1.0"; const ASSETS=["./","./index.html","./styles.css","./app.js","./foods.js","./ai.js","./manifest.webmanifest"];
+self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(ASSETS.map(u=>c.add(u)))).then(()=>self.skipWaiting()))});
+self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
+self.addEventListener("fetch",e=>{
+  if(e.request.method!=="GET") return;
+  const url=new URL(e.request.url);
+  if(url.origin!==location.origin) return;
+  e.respondWith(fetch(e.request).then(r=>{ const c=r.clone(); caches.open(CACHE).then(cache=>cache.put(e.request,c)); return r }).catch(()=>caches.match(e.request).then(r=>r||caches.match("./index.html"))));
+});

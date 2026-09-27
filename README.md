@@ -1,39 +1,32 @@
-# Fitness AI Hub v1.0
+# Fitness AI Hub v2 - Free AI Coach
+Built from your video inspiration but without wedding stuff. Focus: stay fit & healthy.
 
-A zero-cost, mobile-first, offline PWA for personal fitness, meal, body, sleep and hydration tracking.
+## What's new vs v1
+- Home like your video: Weight, Lost so far, Calories, Protein, Yesterday's Check-in (free AI), Today's Session, Quick Log
+- Meal logging with Malaysian favourite foods + S/M/L (Chicken Breast etc) - easy like your app
+- Workout templates: Push Day, Pull Day, Leg Day, Full Body with sets/reps/kg editable
+- History: Weight Journey canvas chart + projection + last 14 days
+- Photos: Front/Back/Side progress photos stored in Supabase Storage (private)
+- AI Report: Weekly report powered by FREE local AI (no key). Optional Groq key (free 14k req/day at console.groq.com) upgrades to LLM
+- Dark theme like video (#0a0a0a + lime #c6ff00)
 
-## Run locally
+## Setup
+1. In Supabase SQL Editor, paste supabase-schema.sql and Run
+2. Storage bucket `progress-photos` is auto-created by SQL (private RLS)
+3. Auth > URL Configuration: set Site URL to your GitHub Pages URL, add localhost:8080 to Redirects
+4. Get Project URL + anon/publishable key from Project Settings
 
-Service workers do not run from a `file://` URL. Start a local server in this folder:
-
-```bash
+## Test locally
 python -m http.server 8080
-```
+open http://localhost:8080
+First screen asks for Supabase URL + key + optional Groq key (leave empty for free local AI)
 
-Open `http://localhost:8080`.
+## Free AI
+- No key needed: Yesterday's Check-in + Weekly Report use rule-based AI that mimics your video messages in Malay+English
+- Optional: paste Groq API key (gsk_...) from console.groq.com for real LLM - free tier
 
-## Deploy to GitHub Pages
+## Foods
+Edit foods.js to add your own Kelantan meals. Sizes: S=100g, M=165g, L=225g raw weight as in video.
 
-1. Create a public GitHub repository named `fitness-ai-hub`.
-2. Upload every file and folder from this project, preserving the folder structure.
-3. Open repository **Settings > Pages**.
-4. Under **Build and deployment**, choose **Deploy from a branch**.
-5. Select branch **main**, folder **/(root)**, then Save.
-6. Open the generated `https://USERNAME.github.io/fitness-ai-hub/` URL.
-
-All URLs are relative, so this project works under a GitHub Pages repository path.
-
-## Install on iPhone
-
-1. Open the deployed HTTPS URL in Safari.
-2. Tap Share.
-3. Tap Add to Home Screen.
-4. Keep Open as Web App enabled when shown, then tap Add.
-
-## Data and privacy
-
-Version 1 stores data in browser localStorage only. Export a JSON backup from Settings before clearing browser data or moving to a new phone. There is no cloud sync yet.
-
-## Update the app
-
-Change the cache name in `sw.js`, for example from `v1.0.0` to `v1.0.1`, whenever changing cached files. Commit and deploy, then fully close and reopen the installed app.
+## Deploy
+Push all files to main, enable GitHub Pages from root.
