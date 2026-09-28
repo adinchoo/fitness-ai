@@ -1,4 +1,3 @@
-// v7.1.2 - Fixed + Backward compatible + Logs errors
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
@@ -10,23 +9,22 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
-  
+
   if (req.method === 'GET') {
     const url = new URL(req.url)
-    return new Response(JSON.stringify({ 
-      ok: true, 
-      message: "Edge function alive. Use POST with Authorization: Bearer <jwt>",
+    return new Response(JSON.stringify({
+      ok: true,
+      message: "Edge function alive. POST with Authorization: Bearer <supabase_access_token>",
       user_id_query: url.searchParams.get('user_id'),
-      has_auth: !!req.headers.get('Authorization')
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      has_auth:!!req.headers.get('Authorization')
+    }), { headers: {...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
   try {
     const url = new URL(req.url)
     const userIdFromQuery = url.searchParams.get('user_id') || req.headers.get('x-user-id')
     const authHeader = req.headers.get('Authorization')
-
-    let effectiveUserId = null
+    let effectiveUserId: string | null = null
 
     if (authHeader?.startsWith('Bearer ')) {
       const jwt = authHeader.replace('Bearer ', '').trim()
@@ -35,13 +33,13 @@ serve(async (req) => {
         Deno.env.get('SUPABASE_ANON_KEY')!
       )
       const { data: { user }, error } = await supabaseAnon.auth.getUser(jwt)
-      if (error || !user) {
-        return new Response(JSON.stringify({ error: 'Invalid JWT: ' + (error?.message || 'no user') }), 
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (error ||!user) {
+        return new Response(JSON.stringify({ error: 'Invalid JWT: ' + (error?.message || 'no user') }),
+          { status: 401, headers: {...corsHeaders, 'Content-Type': 'application/json' } })
       }
-      if (userIdFromQuery && userIdFromQuery !== user.id) {
-        return new Response(JSON.stringify({ error: 'user_id mismatch' }), 
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (userIdFromQuery && userIdFromQuery!== user.id) {
+        return new Response(JSON.stringify({ error: 'user_id mismatch' }),
+          { status: 403, headers: {...corsHeaders, 'Content-Type': 'application/json' } })
       }
       effectiveUserId = user.id
     } else {
@@ -50,53 +48,46 @@ serve(async (req) => {
       if (secretEnv && secretHeader === secretEnv && userIdFromQuery) {
         effectiveUserId = userIdFromQuery
       } else {
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
           error: 'Missing auth. Add header Authorization: Bearer <supabase_access_token> OR x-secret-token',
-          hint: 'Get token: in app console -> localStorage.getItem("sb-...-auth-token") -> access_token',
-        }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+          hint: 'In browser console: JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.includes("auth-token"))||"")).access_token',
+        }), { status: 401, headers: {...corsHeaders, 'Content-Type': 'application/json' } })
       }
     }
 
-    if (!effectiveUserId) {
-      return new Response(JSON.stringify({ error: 'user_id required' }), 
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
+    if (!effectiveUserId) return new Response(JSON.stringify({ error: 'user_id required' }), { status: 400, headers: {...corsHeaders, 'Content-Type': 'application/json' } })
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const body = await req.json().catch(() => ({}))
     const metrics = body.data?.metrics || body.metrics || []
     const workouts = body.data?.workouts || body.workouts || []
-    
-    let inserted = { steps: 0, heart: 0, sleep: 0, weight: 0, workouts: 0, errors: [] }
+
+    let inserted: any = { steps: 0, heart: 0, sleep: 0, weight: 0, workouts: 0, errors: [] }
 
     for (const metric of metrics) {
       const name = (metric.name || '').toLowerCase()
       const data = metric.data || []
       if (name.includes('step_count')) {
-        const rows = data.map((d) => ({
+        const rows = data.map((d: any) => ({
           user_id: effectiveUserId,
           steps: parseInt(d.qty || d.value || 0),
           distance_km: parseFloat(d.distance || 0) || 0,
           source: 'Apple Health Auto',
           logged_at: d.date || new Date().toISOString()
-        })).filter((r) => r.steps > 0)
+        })).filter((r: any) => r.steps > 0)
         if (rows.length) {
           const { error } = await supabase.from('steps_logs').insert(rows)
           if (error) inserted.errors.push('steps: ' + error.message)
           else inserted.steps += rows.length
         }
       }
-      if (name.includes('heart_rate') && !name.includes('resting') && !name.includes('variability')) {
-        const rows = data.map((d) => ({
+      if (name.includes('heart_rate') &&!name.includes('resting') &&!name.includes('variability')) {
+        const rows = data.map((d: any) => ({
           user_id: effectiveUserId,
           bpm: parseInt(d.qty || d.value || 0),
           source: 'Apple Health Auto',
           logged_at: d.date || new Date().toISOString()
-        })).filter((r) => r.bpm > 20 && r.bpm < 250)
+        })).filter((r: any) => r.bpm > 20 && r.bpm < 250)
         if (rows.length) {
           const { error } = await supabase.from('heart_rate_logs').insert(rows)
           if (error) inserted.errors.push('hr: ' + error.message)
@@ -104,17 +95,11 @@ serve(async (req) => {
         }
       }
       if (name.includes('sleep')) {
-        const rows = data.map((d) => {
+        const rows = data.map((d: any) => {
           let hours = parseFloat(d.qty || d.value || 0)
           if (hours > 24) hours = hours / 60
-          return {
-            user_id: effectiveUserId,
-            duration_hours: hours,
-            quality: 3,
-            source: 'Apple Health Auto',
-            logged_at: d.date || new Date().toISOString()
-          }
-        }).filter((r) => r.duration_hours > 0 && r.duration_hours < 24)
+          return { user_id: effectiveUserId, duration_hours: hours, quality: 3, source: 'Apple Health Auto', logged_at: d.date || new Date().toISOString() }
+        }).filter((r: any) => r.duration_hours > 0 && r.duration_hours < 24)
         if (rows.length) {
           const { error } = await supabase.from('sleep_logs').insert(rows)
           if (error) inserted.errors.push('sleep: ' + error.message)
@@ -122,12 +107,12 @@ serve(async (req) => {
         }
       }
       if (name.includes('body_mass') || name.includes('weight')) {
-        const rows = data.map((d) => ({
+        const rows = data.map((d: any) => ({
           user_id: effectiveUserId,
           weight_kg: parseFloat(d.qty || d.value || 0),
           source: 'Apple Health Auto',
           logged_at: d.date || new Date().toISOString()
-        })).filter((r) => r.weight_kg > 20 && r.weight_kg < 400)
+        })).filter((r: any) => r.weight_kg > 20 && r.weight_kg < 400)
         if (rows.length) {
           const { error } = await supabase.from('body_logs').insert(rows)
           if (error) inserted.errors.push('weight: ' + error.message)
@@ -137,7 +122,7 @@ serve(async (req) => {
     }
 
     if (workouts.length) {
-      const rows = workouts.map((w) => ({
+      const rows = workouts.map((w: any) => ({
         user_id: effectiveUserId,
         activity_name: w.name || w.workoutType || 'Workout',
         duration_minutes: Math.round((w.duration || 0) / 60),
@@ -156,18 +141,17 @@ serve(async (req) => {
       await supabase.from('integration_imports').insert({
         user_id: effectiveUserId,
         provider: 'apple_health_auto_rest_secure',
-        file_name: 'REST API v7.1.2',
+        file_name: 'REST API v7.2',
         records_count: total
       })
     }
 
     return new Response(JSON.stringify({ success: true, user_id: effectiveUserId, inserted }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: {...corsHeaders, 'Content-Type': 'application/json' }
     })
-
-  } catch (e) {
+  } catch (e: any) {
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      status: 500, headers: {...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
 })
