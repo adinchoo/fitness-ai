@@ -4,31 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09131f">
-  <title>Fitness AI Hub v4 Premium</title>
+  <title>Fitness AI Hub v7.1 - Puter Only</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
   <script src="https://js.puter.com/v2/"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div id="toast" class="toast"></div>
 
   <section id="setupScreen" class="center-screen hidden">
     <form id="setupForm" class="auth-card">
-      <div class="brand"><span>💪</span><div><h1>Connect Supabase v4</h1><p>Premium Zero-Cost</p></div></div>
-      <div class="notice">New tables: heart_rate_logs, steps_logs, sleep enhanced. Run supabase-schema-v4.sql first!</div>
+      <div class="brand"><span>💪</span><div><h1>Connect Supabase v7.1</h1><p>Puter Only • No API Keys</p></div></div>
+      <div class="notice">Run supabase-schema-v4.1.sql first! Then paste your Supabase URL and anon key.</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
-      <label>Publishable key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_..."></textarea></label>
-      <label>Puter AI (for AI coach)</label>
-      <label>Puter AI (for Food Photo)</label>
+      <label>Publishable / anon key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_... or eyJ..."></textarea></label>
       <button class="btn primary" type="submit">Save and connect</button>
     </form>
   </section>
 
   <section id="authScreen" class="center-screen hidden">
     <div class="auth-card wide">
-      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub v4</h1><p>Garmin • Strava • Zepp • Sleep • HR</p></div></div>
+      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub v7.1</h1><p>Puter • Garmin • Strava • Zepp</p></div></div>
       <div class="tabs"><button class="tab active" data-auth-tab="login" type="button">Sign in</button><button class="tab" data-auth-tab="signup" type="button">Create account</button></div>
       <form id="loginForm" class="stack auth-panel active">
         <label>Email<input name="email" type="email" required></label>
@@ -81,7 +78,7 @@
         </div>
 
         <article class="panel ai-panel">
-          <div class="panel-head"><h3>✦ YESTERDAY AI CHECK-IN</h3><span class="pill" id="aiModePill">Free AI</span></div>
+          <div class="panel-head"><h3>✦ YESTERDAY AI CHECK-IN</h3><span class="pill" id="aiModePill">Puter</span></div>
           <p id="yesterdayCheckin" class="ai-text">Loading...</p>
           <div id="recoveryBar" class="recovery-bar"></div>
         </article>
@@ -110,7 +107,6 @@
         <div class="hero"><h2>Workout</h2><select id="workoutTemplateSelect"></select></div>
         <div id="workoutEditor" class="panel"></div>
         <button id="saveWorkoutBtn" class="btn primary full">Save Workout</button>
-        <article class="panel" style="margin-top:16px"><h3>Recent</h3><div id="recentWorkouts"></div></article>
       </section>
 
       <section id="activityView" class="view">
@@ -142,39 +138,35 @@
 
       <section id="integrationsView" class="view">
         <h2>Integrations • 0 Cost</h2>
-        <article class="panel"><h3>⌚ Garmin Watch</h3><p class="muted">Export from Garmin Connect > Activities > Export CSV. Also Daily Steps CSV.</p><ul class="muted small"><li>Garmin Connect web > Activities > ⚙️ Export CSV</li><li>Garmin Connect > Health Stats > Steps > Export</li><li>Upload below - no API key needed</li></ul><input type="file" id="garminFile" accept=".csv,.json"><button onclick="handleGarminImport()" class="btn primary small" style="margin-top:8px">Import Garmin CSV</button><div id="garminStatus" class="muted"></div></article>
-        <article class="panel"><h3>🏃 Strava</h3><p class="muted">Strava > Settings > Delete/Download > Request Export. You'll get activities.csv</p><input type="file" id="stravaFile" accept=".csv"><button onclick="handleStravaImport()" class="btn primary small" style="margin-top:8px">Import Strava CSV</button><div id="stravaStatus" class="muted"></div></article>
-        <article class="panel"><h3>⚖️ Xiaomi Scale + Zepp Life (Mi Fit)</h3><p class="muted">Zepp Life app > Profile > My Data > Export or use Zepp app export. CSV with weight.</p><input type="file" id="zeppFile" accept=".csv"><button onclick="handleZeppImport()" class="btn primary small" style="margin-top:8px">Import Zepp Weight CSV</button><div id="zeppStatus" class="muted"></div></article>
-        <article class="panel"><h3>How to automate (still 0 cost)</h3><p class="muted">1. Garmin auto-sync to Strava (free in Garmin Connect > Settings > Third-party apps > Strava)<br>2. Zepp Life auto-sync weight to Google Fit (free)<br>3. Then export once a week - 2 clicks.<br><br>Premium tip: Use <b>Health Connect</b> on Android to aggregate Garmin+Zepp+Strava then export from there.</p></article>
+        <article class="panel"><h3>⌚ Garmin Watch</h3><p class="muted">Export from Garmin Connect > Activities > Export CSV.</p><input type="file" id="garminFile" accept=".csv,.json"><button onclick="handleGarminImport()" class="btn primary small" style="margin-top:8px">Import Garmin CSV</button><div id="garminStatus" class="muted"></div></article>
+        <article class="panel"><h3>🏃 Strava</h3><p class="muted">Strava > Settings > Download > activities.csv</p><input type="file" id="stravaFile" accept=".csv"><button onclick="handleStravaImport()" class="btn primary small" style="margin-top:8px">Import Strava CSV</button><div id="stravaStatus" class="muted"></div></article>
+        <article class="panel"><h3>⚖️ Xiaomi Scale + Zepp Life</h3><p class="muted">Zepp Life > Profile > My Data > Export CSV</p><input type="file" id="zeppFile" accept=".csv"><button onclick="handleZeppImport()" class="btn primary small" style="margin-top:8px">Import Zepp Weight CSV</button><div id="zeppStatus" class="muted"></div></article>
       </section>
 
-      
-    <section id="profileView" class="view">
+      <section id="profileView" class="view">
         <div class="panel" style="border:2px solid #5de8b6;background:linear-gradient(145deg,#102c38,#122235)">
-          <h3>🔗 Your Auto Sync URL - Ready for Health Auto Export (Lybron)</h3>
-          <p class="muted small">Copy this and paste into Health Auto Export > Automations > REST API > URL</p>
+          <h3>🔗 Your Auto Sync URL - Dynamic v7.1</h3>
+          <p class="muted small">Copy this into Health Auto Export > Automations > REST API > URL. Add Header: Authorization = Bearer + your Supabase access token (Settings > API).</p>
           <div style="background:#0a1a2a;padding:12px;border-radius:10px;word-break:break-all;font-family:monospace;font-size:11px;border:1px solid #1e324a">
-            <span id="finalUrl">https://edybozhpdaexeapywbeh.supabase.co/functions/v1/health-auto-export?user_id=e0c24919-3cec-466e-93e6-b9834e4d2011</span>
+            <span id="finalUrl">Login first to generate URL</span>
           </div>
-          <div style="display:flex;gap:8px;margin-top:12px">
-            <button class="btn primary small" onclick="navigator.clipboard.writeText(document.getElementById('finalUrl').textContent); toast('URL copied!')">📋 Copy Final URL</button>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn primary small" onclick="navigator.clipboard.writeText(document.getElementById('finalUrl').textContent); toast('URL copied!')">📋 Copy URL</button>
+            <button class="btn ghost small" onclick="navigator.clipboard.writeText(document.getElementById('userIdDisplay').textContent); toast('User ID copied!')">Copy User ID</button>
           </div>
-          <small class="muted" style="display:block;margin-top:10px">User ID: <code>e0c24919-3cec-466e-93e6-b9834e4d2011</code></small>
+          <small class="muted" style="display:block;margin-top:10px">User ID: <code id="userIdDisplay">--</code></small>
+          <small class="muted" style="display:block;margin-top:6px;color:#ff7a86">⚠️ This URL now requires JWT auth. Anonymous POST will be rejected.</small>
         </div>
 
         <h2 style="margin-top:20px">Profile</h2>
         <form id="profileForm" class="panel form-grid"></form>
 
         <article class="panel" style="border:2px solid #5de8b6;background:linear-gradient(145deg,#102c38,#122235)">
-          <h3>🤖 AI - PUTER ONLY (No API Keys Required)</h3>
-          <p class="muted" style="font-size:13px;line-height:1.5">Hardcoded with <code>https://js.puter.com/v2/</code><br>Text model: <code>google/gemini-2.5-flash-lite</code><br>Vision model: <code>google/gemini-2.5-flash</code> for food photos<br>No keys needed - unlimited free via Puter user-pays model.</p>
-          <div style="background:#0a1a2a;padding:10px;border-radius:10px;font-family:monospace;font-size:11px;border:1px solid #1e324a;margin-top:10px;word-break:break-all">
-            puter.ai.chat("Classify the following text as positive, negative, or neutral: 'The product works well but the delivery was late.'", {<br>&nbsp;&nbsp;model: 'google/gemini-2.5-flash-lite'<br>})
-          </div>
+          <h3>🤖 AI - PUTER ONLY - No Keys</h3>
+          <p class="muted" style="font-size:13px;line-height:1.5">Hardcoded: <code>https://js.puter.com/v2/</code><br>Text: <code>google/gemini-2.0-flash-lite</code><br>Vision: <code>google/gemini-2.0-flash</code></p>
           <div class="button-row" style="margin-top:14px">
-            <button id="testAIButton" class="btn primary" type="button">🤖 Test Puter AI - Run Your Example</button>
+            <button id="testPuterButton" class="btn primary" type="button">🤖 Test Puter AI</button>
           </div>
-          <small id="keyStatus" class="muted" style="display:block;margin-top:10px">✅ Ready - Puter hardcoded, no API keys</small>
           <pre id="puterTestOutput" class="muted" style="margin-top:10px;white-space:pre-wrap;background:#0a1a2a;padding:12px;border-radius:8px;display:none;border:1px solid #1e324a;min-height:40px"></pre>
         </article>
 
@@ -193,11 +185,10 @@
     </nav>
   </div>
 
-  <!-- Dialogs -->
-  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal</h3><button data-close type="button">×</button></header><div class="kpi-row"><div><span>KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div><div class="tabs small" id="mealCatTabs"></div><div id="mealOptions" class="meal-options"></div><div id="mealSelected" class="selected-list"></div><div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Gemini key required</small></div><div class="custom-add"><input id="customFoodName" placeholder="Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div><button class="btn primary" type="submit" id="logMealBtn">Log 0</button></form></dialog>
-  <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight (Xiaomi Scale)</h3><button data-close type="button">×</button></header><label>Weight kg<input name="weight_kg" type="number" step="0.1" required></label><label>Body fat % (optional)<input name="body_fat" type="number" step="0.1"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header><label>Activity<input name="activity_name" required placeholder="Running, Garmin, Strava..."></label><div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div><label>Distance km (if Strava/Garmin)<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="sleepDialog"><form id="sleepForm" class="dialog-form"><header><h3>Log Sleep (Garmin auto)</h3><button data-close type="button">×</button></header><div class="grid2"><label>Hours<input name="duration_hours" type="number" step="0.1" required></label><label>Quality 1-5<input name="quality" type="number" min="1" max="5" value="3"></label></div><div class="grid2"><label>Deep min<input name="deep_minutes" type="number"></label><label>Light min<input name="light_minutes" type="number"></label></div><div class="grid2"><label>REM min<input name="rem_minutes" type="number"></label><label>Awake min<input name="awake_minutes" type="number"></label></div><label>Sleep score 0-100 (Garmin)<input name="score" type="number"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal</h3><button data-close type="button">×</button></header><div class="kpi-row"><div><span>KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div><div class="tabs small" id="mealCatTabs"></div><div id="mealOptions" class="meal-options"></div><div id="mealSelected" class="selected-list"></div><div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Puter AI - no key needed</small></div><div class="custom-add"><input id="customFoodName" placeholder="Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div><button class="btn primary" type="submit" id="logMealBtn">Log 0</button></form></dialog>
+  <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight</h3><button data-close type="button">×</button></header><label>Weight kg<input name="weight_kg" type="number" step="0.1" required></label><label>Body fat % (optional)<input name="body_fat" type="number" step="0.1"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header><label>Activity<input name="activity_name" required placeholder="Running, Garmin..."></label><div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="sleepDialog"><form id="sleepForm" class="dialog-form"><header><h3>Log Sleep</h3><button data-close type="button">×</button></header><div class="grid2"><label>Hours<input name="duration_hours" type="number" step="0.1" required></label><label>Quality 1-5<input name="quality" type="number" min="1" max="5" value="3"></label></div><div class="grid2"><label>Deep min<input name="deep_minutes" type="number"></label><label>Light min<input name="light_minutes" type="number"></label></div><div class="grid2"><label>REM min<input name="rem_minutes" type="number"></label><label>Awake min<input name="awake_minutes" type="number"></label></div><label>Sleep score<input name="score" type="number"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
   <dialog id="stepsDialog"><form id="stepsForm" class="dialog-form"><header><h3>Log Steps / Walk</h3><button data-close type="button">×</button></header><label>Steps<input name="steps" type="number" required></label><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Calories burned<input name="calories_burned" type="number"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
   <dialog id="hrDialog"><form id="hrForm" class="dialog-form"><header><h3>Log Heart Rate</h3><button data-close type="button">×</button></header><label>BPM now<input name="bpm" type="number" required></label><div class="grid2"><label>Resting BPM<input name="resting_bpm" type="number"></label><label>Avg BPM<input name="avg_bpm" type="number"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
   <dialog id="importDialog"><form class="dialog-form" onsubmit="return false"><header><h3>Import Center</h3><button data-close type="button">×</button></header><p class="muted">Use Sync tab for Garmin/Strava/Zepp. Or quick CSV here.</p><input type="file" id="quickImportFile" accept=".csv"><select id="quickImportType"><option value="zepp">Zepp Weight</option><option value="garmin">Garmin Steps/Activity</option><option value="strava">Strava Activities</option></select><button class="btn primary" onclick="handleQuickImport()">Import</button><div id="quickImportStatus" class="muted"></div></form></dialog>
@@ -205,6 +196,7 @@
   <script src="./foods.js"></script>
   <script src="./health.js"></script>
   <script src="./integrations.js"></script>
+  <script src="./apple-health.js"></script>
   <script src="./ai.js"></script>
   <script src="./app.js" defer></script>
 </body>

@@ -1,10 +1,13 @@
-
-// AI Engine v7 - PUTER ONLY - No Gemini API, No Groq API - 100% Free Hardcoded
-// Uses ONLY puter.ai.chat via https://js.puter.com/v2/
-// Models: google/gemini-2.5-flash-lite (text), google/gemini-2.5-flash (vision)
-// Your example: puter.ai.chat("Classify...", {model: 'gemini-3.5-flash-lite'})
+// AI Engine v7.1 - PUTER ONLY - Cleaned
+// Models: google/gemini-2.0-flash-lite (text), google/gemini-2.0-flash (vision)
+// Stable Puter models - 2.5 is preview only
 
 const AI = {
+  MODELS: {
+    text: 'google/gemini-2.0-flash-lite',
+    vision: 'google/gemini-2.0-flash'
+  },
+
   isPuterReady(){ return typeof puter !== 'undefined' && puter.ai && puter.ai.chat; },
 
   async generateCheckin(profile, yesterday){
@@ -29,17 +32,12 @@ const AI = {
     return parts.join(' • ') + '. Keep the momentum going!';
   },
 
-  // PUTER ONLY - Hardcoded model from your example
   async puterCheckin(profile, y){
     const prompt = `You are an English fitness coach for ${profile.full_name}, goal ${profile.primary_goal}. Yesterday: calories ${y.calories}/${y.targetCal}, protein ${y.protein}/${y.targetPro}g, steps ${y.steps||0}/${profile.target_steps||10000}, sleep ${y.sleepHours||0}h score ${y.sleepScore||0}, avg HR ${y.avgHR||0}, workouts ${y.workoutCount}, recovery ${y.recovery||50}%. Write a short check-in under 60 words in 100% English with emoji. Encouraging.`;
-
-    // YOUR EXAMPLE ADAPTED - hardcoded Puter, no API key
-    const response = await puter.ai.chat(prompt, {
-      model: 'google/gemini-2.5-flash-lite'
-    });
-    
+    const response = await puter.ai.chat(prompt, { model: this.MODELS.text });
     if(typeof response === 'string') return response;
     if(response.message?.content) return response.message.content;
+    if(response.text) return response.text;
     return response.toString();
   },
 
@@ -61,11 +59,10 @@ const AI = {
 
   async puterWeekly(profile, last7){
     const prompt = `Premium English fitness coach. Profile: ${profile.full_name}, goal ${profile.primary_goal}, target ${profile.target_weight_kg}kg. Last 7 days: cal ${last7.totalCal}, protein ${last7.totalPro}g, workouts ${last7.workoutCount}, steps ${last7.steps.reduce((s,x)=>s+x.steps,0)}, sleep ${last7.sleep.length}, weight change ${last7.weightChange}kg. Write 5 sections: Weight, Nutrition, Activity & Steps, Sleep & Recovery, Heart Rate & VO2max, What to Improve. English only, max 250 words with emoji.`;
-    const response = await puter.ai.chat(prompt, {
-      model: 'google/gemini-2.5-flash'
-    });
+    const response = await puter.ai.chat(prompt, { model: this.MODELS.vision });
     if(typeof response === 'string') return response;
     if(response.message?.content) return response.message.content;
+    if(response.text) return response.text;
     return response.toString();
   },
 
@@ -82,10 +79,9 @@ const AI = {
     return null;
   },
 
-  // PUTER ONLY VISION - Food Photo
   async analyzeFoodPhoto(file){
     if(!this.isPuterReady()){
-      return {error: "Puter AI not loaded. Check internet and https://js.puter.com/v2/ script"};
+      return {error: "Puter AI not loaded. Check internet and https://js.puter.com/v2/"};
     }
     const dataUrl = await new Promise(res=>{
       const r = new FileReader();
@@ -93,16 +89,12 @@ const AI = {
       r.readAsDataURL(file);
     });
     const prompt = `Nutrition expert. Look at this food photo. Estimate dish name (English), calories, protein_g, carbs_g, fat_g. Return ONLY valid JSON no extra text: {"name":"Dish Name","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10} If not food, return {"error":"not_food"}`;
-
     try{
-      const response = await puter.ai.chat(
-        prompt,
-        dataUrl,
-        { model: 'google/gemini-2.5-flash' }
-      );
+      const response = await puter.ai.chat(prompt, dataUrl, { model: this.MODELS.vision });
       let text = "";
       if(typeof response === 'string') text = response;
       else if(response.message?.content) text = response.message.content;
+      else if(response.text) text = response.text;
       else text = JSON.stringify(response);
       const json = this.extractJson(text);
       if(json && json.calories) return json;
@@ -113,14 +105,14 @@ const AI = {
     }
   },
 
-  // Test your exact example
   async testPuter(){
     if(!this.isPuterReady()) throw new Error("Puter not ready - check https://js.puter.com/v2/ loaded");
     const response = await puter.ai.chat("Classify the following text as positive, negative, or neutral: 'The product works well but the delivery was late.'", {
-      model: 'google/gemini-2.5-flash-lite'
+      model: this.MODELS.text
     });
     if(typeof response === 'string') return response;
     if(response.message?.content) return response.message.content;
+    if(response.text) return response.text;
     return JSON.stringify(response);
   }
 };

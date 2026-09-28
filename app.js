@@ -1,6 +1,5 @@
-
 "use strict";
-const CONFIG_KEY="fitness-ai-supabase-config";
+const CONFIG_KEY="fitness-ai-supabase-config-v4";
 let db=null,user=null,profile=null;
 let records={meals:[],activities:[],body:[],workoutSessions:[],workoutExercises:[],photos:[],water:[],sleep:[],steps:[],hr:[]};
 let selectedFoods = [];
@@ -17,7 +16,10 @@ const isSameDay=(a,b)=>dayStr(a)===dayStr(b);
 const isToday=d=>isSameDay(d,new Date());
 const isYesterday=d=>isSameDay(d, new Date(Date.now()-86400000));
 
-function client(c){ db=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) }
+function client(c){ 
+  if(!window.supabase){ throw new Error("Supabase SDK not loaded"); }
+  db=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}) 
+}
 
 async function boot(){
   const c=config();
@@ -28,17 +30,18 @@ async function boot(){
     if(session){ user=session.user; await enterApp(); }
     else show("authScreen");
     db.auth.onAuthStateChange((ev,s)=>{ if(ev==="SIGNED_OUT") show("authScreen") });
-  }catch(e){ console.error(e); show("setupScreen"); toast("Connection failed",true) }
+  }catch(e){ console.error(e); show("setupScreen"); toast("Connection failed: "+e.message,true) }
 }
 
 $("#setupForm").addEventListener("submit", async e=>{
   e.preventDefault();
-  const url=$("#setupUrl").value.trim().replace(/\/$/,""), key=$("#setupKey").value.trim(), groq=$("#setupGroq")?.value.trim()||"", gemini=$("#setupGemini")?.value.trim()||"";
-  if(!url.includes(".supabase.co") && !url.startsWith("https://")){ toast("Invalid URL",true); return }
-  localStorage.setItem(CONFIG_KEY, JSON.stringify({url,key,puterKey:groq,puterKey:gemini}));
+  const url=$("#setupUrl").value.trim().replace(/\/$/,""), key=$("#setupKey").value.trim();
+  if(!url.includes(".supabase.co")){ toast("Invalid Supabase URL",true); return }
+  if(!key.startsWith("sb_") && !key.startsWith("eyJ")){ toast("Use publishable key sb_publishable_... or anon JWT",true); return }
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({url,key}));
   location.reload();
 });
-$("#changeConnection").onclick=()=>{ if(confirm("Change Supabase connection?")){ localStorage.removeItem(CONFIG_KEY); location.reload() } };
+$("#changeConnection").onclick=()=>{ if(confirm("Change Supabase connection? This will log you out.")){ localStorage.removeItem(CONFIG_KEY); location.reload() } };
 
 $$('[data-auth-tab]').forEach(b=>b.onclick=()=>{
   $$('[data-auth-tab]').forEach(x=>x.classList.toggle("active",x===b));
@@ -90,6 +93,15 @@ async function enterApp(){
   await Promise.all([loadProfile(), loadRecords()]);
   initUI();
   render();
+  updateAutoSyncUrl();
+}
+
+function updateAutoSyncUrl(){
+  const c=config();
+  const el=$("#finalUrl");
+  if(!el || !c || !user) return;
+  el.textContent = `${c.url}/functions/v1/health-auto-export?user_id=${user.id}`;
+  $("#userIdDisplay").textContent = user.id;
 }
 
 async function loadProfile(){
@@ -145,31 +157,24 @@ function initUI(){
   buildProfileForm();
   $("#refreshButton").onclick=async()=>{ await loadRecords(); render(); toast("Refreshed") };
   $("#exportButton").onclick=exportJSON;
-  const saveKeys=()=>{
-    const c=config()||{}; const groq=$("#puterKeyInput")?.value.trim()||""; const gemini=$("#puterKeyInput")?.value.trim()||"";
-    if(gemini && !gemini.startsWith("AIza")){ toast("Gemini must start with AIza...",true); return; }
-    c.puterKey=groq; c.puterKey=gemini; localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); toast("Keys saved"); $("#keyStatus").textContent="✅ Saved "+(groq?"Groq ":"")+(gemini?"Gemini":""); updateAIMode();
-  };
-  if(null) null.onclick=saveKeys;
-  if($("#puterKeyInput")) $("#puterKeyInput").value=config()?.puterKey||"";
-  if($("#puterKeyInput")) $("#puterKeyInput").value=config()?.puterKey||"";
-  if($("#testAIButton")) $("#testAIButton").onclick=async()=>{
-    const c=config()||{}; if(!c.puterKey && !c.puterKey){ toast("Add key",true); return; }
-    $("#keyStatus").textContent="Testing...";
-    try{
-      if(c.puterKey){
-        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.puterKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Say ok"}]}]})});
-        const data=await res.json(); if(data.error) throw new Error(data.error.message);
-        $("#keyStatus").textContent="✅ Gemini works!"; toast("Gemini works");
-      } else {
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+c.puterKey,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:"Say ok"}],max_tokens:10})});
-        const data=await res.json(); if(data.error) throw new Error(data.error.message);
-        $("#keyStatus").textContent="✅ Groq works!"; toast("Groq works");
+  
+  // v7.1 - Puter only - no key inputs
+  if($("#testPuterButton")){
+    $("#testPuterButton").onclick=async()=>{
+      $("#puterTestOutput").style.display="block";
+      $("#puterTestOutput").textContent="Testing Puter...";
+      try{
+        const res = await AI.testPuter();
+        $("#puterTestOutput").textContent = "✅ Puter works:\n" + res;
+        toast("Puter works!");
+        updateAIMode();
+      }catch(e){
+        $("#puterTestOutput").textContent = "❌ " + e.message + "\nCheck console. Ensure https://js.puter.com/v2/ loaded and internet is on.";
+        toast(e.message,true);
       }
-    }catch(e){ $("#keyStatus").textContent="❌ "+e.message; toast(e.message,true); }
-  };
+    };
+  }
   updateAIMode();
-  // Forms
   $("#bodyForm").onsubmit=saveBody;
   $("#workoutQuickForm").onsubmit=saveQuickWorkout;
   $("#mealForm").onsubmit=saveMeal;
@@ -188,10 +193,18 @@ function switchView(id){
   if(id==="activityView") renderActivity();
 }
 
-function updateAIMode(){ const pill=document.getElementById("aiModePill"); if(!pill) return; pill.textContent = (typeof puter !== "undefined") ? "Puter • Gemini 2.5 Flash" : "Local AI"; } function updateAIMode_old(){
-  const c=config()||{}; const hasGroq=!!c.puterKey; const hasGemini=!!c.puterKey;
-  const pill=$("#aiModePill"); if(!pill) return;
-  pill.textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
+function updateAIMode(){
+  const pill=document.getElementById("aiModePill");
+  if(!pill) return;
+  if(typeof puter !== "undefined" && puter.ai){
+    pill.textContent = "Puter • " + (AI.MODELS?.text || "Gemini 2.0 Flash");
+    pill.style.background="#163a33";
+    pill.style.color="#5de8b6";
+  } else {
+    pill.textContent = "Local AI (Puter offline)";
+    pill.style.background="#55242e";
+    pill.style.color="#ffc1c7";
+  }
 }
 
 function getLast7Data(){
@@ -244,20 +257,15 @@ function render(){
   const lastHR = records.hr[0];
   $("#hrValue").textContent = lastHR? lastHR.bpm : "--";
   $("#hrSub").textContent = lastHR? `Rest ${lastHR.resting_bpm||profile.resting_hr||'--'} bpm` : `Rest ${profile.resting_hr||60} bpm`;
-
-  // Recovery
   const recovery = Health.recoveryScore({sleepHours:lastSleep?Number(lastSleep.duration_hours):0, restingHR:profile.resting_hr, avgHR:lastHR?.bpm, stepsYesterday:todaySteps, workoutCount:records.workoutSessions.filter(s=>isToday(s.logged_at)).length});
   const readiness = Health.readiness({sleepHours:lastSleep?Number(lastSleep.duration_hours):0, sleepScore:lastSleep?.score||0, recovery});
   $("#readinessLabel").textContent = `🔋 ${readiness.label} • Recovery ${recovery}%`;
   $("#readinessLabel").style.color = readiness.color;
   $("#recoveryBar").innerHTML = `<div style="width:${recovery}%;background:${readiness.color};height:100%"></div>`;
-
   renderMealOptions();
   renderTodayLogs();
   renderWorkoutEditor();
   renderTodaySession();
-
-  // AI checkin yesterday
   const yCal = t.dailyCal[yesterdayStr()]||0;
   const yPro = t.dailyPro[yesterdayStr()]||0;
   const ySteps = t.dailySteps[yesterdayStr()]||0;
@@ -271,7 +279,6 @@ function render(){
     sleepHours: ySleep?Number(ySleep.duration_hours):0, sleepScore: ySleep?.score||0,
     avgHR: yHR?.bpm||0, recovery, readiness
   }).then(txt=>{ $("#yesterdayCheckin").textContent=txt; });
-
   drawRings();
 }
 
@@ -395,14 +402,14 @@ function renderWorkoutEditor(){
   const sel=$("#workoutTemplateSelect"); if(!sel) return;
   const tmpl=sel.value; localStorage.setItem('fitness-today-template', tmpl);
   const list=WORKOUT_TEMPLATES[tmpl]||[];
-  $("#workoutEditor").innerHTML = `<h4>${esc(tmpl)} • ${list.length} exercises</h4>` + list.map((ex,i)=>`<div class="row"><div><strong>${esc(ex.name)}</strong><small>${ex.sets}x${ex.reps} • ${ex.weight}kg</small></div><div class="food-size"><input type="number" placeholder="kg" id="w_${i}" value="${ex.weight}" style="width:70px"></div></div>`).join('') + `<small class="muted">Edit weights then Save Workout - will save as session + exercises</small>`;
+  $("#workoutEditor").innerHTML = `<h4>${esc(tmpl)} • ${list.length} exercises</h4>` + list.map((ex,i)=>`<div class="row"><div><strong>${esc(ex.name)}</strong><small>${ex.sets}x${ex.reps} • ${ex.weight}kg</small></div><div class="food-size"><input type="number" placeholder="kg" id="w_${i}" value="${ex.weight}" style="width:70px"></div></div>`).join('') + `<small class="muted">Edit weights then Save Workout</small>`;
 }
 async function saveWorkout(){
   const sel=$("#workoutTemplateSelect"); const tmpl=sel.value;
   const {data:session, error:se} = await db.from('workout_sessions').insert({user_id:user.id, session_name:tmpl, logged_at:new Date().toISOString()}).select().single();
   if(se) return toast(se.message,true);
   const exs=WORKOUT_TEMPLATES[tmpl].map((ex,i)=>{
-    const w=parseFloat($("#w_"+i)?.value)||0;
+    const w=parseFloat(document.getElementById("w_"+i)?.value)||0;
     return {session_id:session.id, user_id:user.id, exercise_name:ex.name, sets:ex.sets, reps:ex.reps, weight_kg:w};
   });
   const {error}=await db.from('workout_exercise_logs').insert(exs);
@@ -412,7 +419,7 @@ async function saveWorkout(){
 
 async function handleFoodPhoto(file){
   if(!file) return;
-  $("#foodPhotoStatus").textContent="Analyzing...";
+  $("#foodPhotoStatus").textContent="Analyzing with Puter...";
   const res = await AI.analyzeFoodPhoto(file);
   if(res.error){ $("#foodPhotoStatus").textContent="❌ "+res.error; return toast(res.error,true); }
   $("#foodPhotoStatus").textContent=`✅ ${res.name} ${res.calories} kcal`;
@@ -426,10 +433,9 @@ async function handlePhotoUpload(file){
   const {error} = await db.storage.from('progress-photos').upload(path, file);
   if(error) return toast(error.message,true);
   const {data:{publicUrl}} = db.storage.from('progress-photos').getPublicUrl(path);
-  // try signed if private
   let url = publicUrl;
   try{ const {data} = await db.storage.from('progress-photos').createSignedUrl(path, 3600*24*365); if(data?.signedUrl) url=data.signedUrl; }catch{}
-  await db.from('progress_photos').insert({user_id:user.id, photo_url:url, photo_type:$("#photoType").value||'Front', logged_at:new Date().toISOString()});
+  await db.from('progress_photos').insert({user_id:user.id, photo_url:url, photo_type:document.getElementById("photoType").value||'Front', logged_at:new Date().toISOString()});
   await loadRecords(); renderPhotos(); toast("Photo saved");
 }
 
@@ -437,7 +443,6 @@ function renderPhotos(){
   $("#photoGrid").innerHTML = records.photos.map(p=>`<div><img src="${p.photo_url}" loading="lazy"><small>${esc(p.photo_type)} • ${new Date(p.logged_at).toLocaleDateString()}</small></div>`).join('') || '<div class="empty">No photos yet</div>';
 }
 
-// Charts helpers
 function drawWeightChart(canvasId, weights, labels, targetWeight){
   const canvas=document.getElementById(canvasId); if(!canvas || !weights.length) return;
   const ctx=canvas.getContext("2d"); const dpr=window.devicePixelRatio||1; const rect=canvas.getBoundingClientRect();
@@ -480,11 +485,9 @@ function drawRings(){
 
 function renderActivity(){
   const t=getLast7Data();
-  // Steps chart last 14
   const last14Steps={}; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); last14Steps[dayStr(d)]=0; }
   records.steps.forEach(s=>{ const d=dayStr(s.logged_at); if(last14Steps[d]!==undefined) last14Steps[d]+=s.steps; });
   drawBar('stepsChart', last14Steps, profile.target_steps||10000);
-  // HR chart
   const last14HR={}; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); last14HR[dayStr(d)]=0; }
   const hrCount={}; records.hr.forEach(h=>{ const d=dayStr(h.logged_at); if(last14HR[d]!==undefined){ last14HR[d]+=h.bpm; hrCount[d]=(hrCount[d]||0)+1; } });
   Object.keys(last14HR).forEach(k=>{ if(hrCount[k]) last14HR[k]=Math.round(last14HR[k]/hrCount[k]); });
@@ -494,7 +497,6 @@ function renderActivity(){
   if($("#restingHrVal")) $("#restingHrVal").textContent = resting + " bpm";
   if($("#avgHrVal")) $("#avgHrVal").textContent = avg ? avg+" bpm" : "--";
   if($("#vo2Val")) $("#vo2Val").textContent = Health.estimateVO2Max(resting, 30, profile.sex_at_birth||'Male');
-  // Sleep chart
   const last14Sleep={}; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); last14Sleep[dayStr(d)]=0; }
   records.sleep.forEach(s=>{ const d=dayStr(s.logged_at); if(last14Sleep[d]!==undefined) last14Sleep[d]+=Number(s.duration_hours); });
   drawBar('sleepChart', last14Sleep, profile.target_sleep_hours||7.5);
@@ -548,9 +550,8 @@ function renderHistory(){
   const days=(new Date(sorted[sorted.length-1].logged_at)-new Date(sorted[0].logged_at))/86400000||1;
   const rate=((last - first)/ (days/7)).toFixed(2);
   if($("#hRate")) $("#hRate").textContent=rate+" kg/wk";
-  const cur=last; const avgLoss=parseFloat(rate); const target=profile.target_weight_kg||83;
-  const remaining=cur-target; const daysToGoal= avgLoss<0 ? Math.ceil(remaining / Math.abs(avgLoss) *7) : 0;
   if($("#projection")){
+    const cur=last; const avgLoss=parseFloat(rate);
     const next1=(cur+avgLoss).toFixed(1); const next2=(cur+avgLoss*2).toFixed(1); const wedding=(cur+avgLoss*10).toFixed(1);
     $("#projection").innerHTML=`
       <div class="proj-card"><span>NEXT WEEK</span><strong>${next1}</strong><small>kg</small></div>
@@ -602,7 +603,7 @@ function buildProfileForm(){
 
 function exportJSON(){
   const blob=new Blob([JSON.stringify({profile, records},null,2)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`fitness-v4-export-${todayStr()}.json`; a.click();
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`fitness-v7.1-export-${todayStr()}.json`; a.click();
 }
 $("#deleteAccountData").onclick=async()=>{
   if(!confirm("Delete all health records? Profile stays.")) return;
@@ -612,7 +613,6 @@ $("#deleteAccountData").onclick=async()=>{
   await loadRecords(); render(); toast("Deleted");
 };
 
-// ---- IMPORT HANDLERS ----
 window.handleGarminImport = async()=>{
   const file=$("#garminFile").files[0]; if(!file) return toast("Select file",true);
   $("#garminStatus").textContent="Parsing Garmin...";
@@ -651,7 +651,7 @@ window.handleZeppImport = async()=>{
     const weights=await Integrations.importZepp(file);
     for(let w of weights){ await db.from('body_logs').insert({user_id:user.id, weight_kg:w.weight_kg, body_fat_percent:w.body_fat_percent, muscle_mass_kg:w.muscle_mass_kg, bmi:w.bmi, source:'Zepp', logged_at: new Date(w.logged_at).toISOString()}); }
     await db.from('integration_imports').insert({user_id:user.id, provider:'zepp', file_name:file.name, records_count:weights.length});
-    $("#zeppStatus").textContent=`✅ Imported ${weights.length} weight records from Xiaomi Scale`;
+    $("#zeppStatus").textContent=`✅ Imported ${weights.length} weight records`;
     await loadRecords(); render(); toast("Zepp imported");
   }catch(e){ $("#zeppStatus").textContent="❌ "+e.message; toast(e.message,true); }
 };
