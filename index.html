@@ -4,29 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#09131f">
-  <title>Fitness AI Hub</title>
+  <title>Fitness AI Hub v4 Premium</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div id="toast" class="toast"></div>
 
   <section id="setupScreen" class="center-screen hidden">
     <form id="setupForm" class="auth-card">
-      <div class="brand"><span>💪</span><div><h1>Connect Supabase</h1><p>One-time setup</p></div></div>
-      <div class="notice">Use Project URL and publishable key. Free AI works without keys.</div>
+      <div class="brand"><span>💪</span><div><h1>Connect Supabase v4</h1><p>Premium Zero-Cost</p></div></div>
+      <div class="notice">New tables: heart_rate_logs, steps_logs, sleep enhanced. Run supabase-schema-v4.sql first!</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
       <label>Publishable key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_..."></textarea></label>
-      <label>Groq Key (Meta Llama)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
-      <label>Gemini Key (Google vision)<input id="setupGemini" type="text" placeholder="AIzaSy..."></label>
+      <label>Groq Key (for AI coach)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
+      <label>Gemini Key (for Food Photo)<input id="setupGemini" type="text" placeholder="AIzaSy..."></label>
       <button class="btn primary" type="submit">Save and connect</button>
     </form>
   </section>
 
   <section id="authScreen" class="center-screen hidden">
     <div class="auth-card wide">
-      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub</h1><p>Stay fit, healthy</p></div></div>
+      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub v4</h1><p>Garmin • Strava • Zepp • Sleep • HR</p></div></div>
       <div class="tabs"><button class="tab active" data-auth-tab="login" type="button">Sign in</button><button class="tab" data-auth-tab="signup" type="button">Create account</button></div>
       <form id="loginForm" class="stack auth-panel active">
         <label>Email<input name="email" type="email" required></label>
@@ -46,6 +47,8 @@
           <label>Activity<select name="activity_level" required><option value="sedentary">Mostly seated</option><option value="light">Light</option><option value="moderate">Moderate</option><option value="very_active">Very active</option></select></label>
           <label>Cal target<input name="target_calories" type="number" value="2200" required></label>
           <label>Protein g<input name="target_protein_g" type="number" value="180" required></label>
+          <label>Steps target<input name="target_steps" type="number" value="10000"></label>
+          <label>Sleep target h<input name="target_sleep" type="number" step="0.5" value="7.5"></label>
         </div>
         <label>Email<input name="email" type="email" required></label>
         <label>Password<input name="password" type="password" required minlength="8"></label>
@@ -58,8 +61,8 @@
 
   <div id="app" class="hidden">
     <header class="topbar">
-      <div><p class="eyebrow" id="dateLabel"></p><h1 id="greeting">Good day</h1></div>
-      <button id="logoutButton" class="btn ghost small">Sign out</button>
+      <div><p class="eyebrow" id="dateLabel"></p><h1 id="greeting">Good day</h1><p id="readinessLabel" class="readiness"></p></div>
+      <div style="display:flex;gap:8px"><button id="syncButton" class="btn ghost small">🔄 Sync</button><button id="logoutButton" class="btn ghost small">Sign out</button></div>
     </header>
 
     <main class="shell">
@@ -70,24 +73,36 @@
           <article class="stat"><span>CALORIES</span><strong id="calValue">0</strong><small>kcal</small><em id="calTarget"></em></article>
           <article class="stat"><span>PROTEIN</span><strong id="proValue">0</strong><small>g</small><em id="proTarget"></em></article>
         </div>
+        <div class="stats-grid three">
+          <article class="stat"><span>STEPS TODAY</span><strong id="stepsValue">0</strong><small>steps</small><em id="stepsSub"></em></article>
+          <article class="stat"><span>SLEEP LAST NIGHT</span><strong id="sleepValue">--</strong><small>h</small><em id="sleepSub"></em></article>
+          <article class="stat"><span>HEART AVG</span><strong id="hrValue">--</strong><small>bpm</small><em id="hrSub"></em></article>
+        </div>
+
         <article class="panel ai-panel">
-          <div class="panel-head"><h3>✦ YESTERDAY</h3><span class="pill" id="aiModePill">Free AI</span></div>
-          <p id="yesterdayCheckin" class="ai-text"></p>
+          <div class="panel-head"><h3>✦ YESTERDAY AI CHECK-IN</h3><span class="pill" id="aiModePill">Free AI</span></div>
+          <p id="yesterdayCheckin" class="ai-text">Loading...</p>
+          <div id="recoveryBar" class="recovery-bar"></div>
         </article>
+
         <article class="panel">
-          <div class="panel-head"><h3>⚡ TODAY'S SESSION</h3><button class="link-btn" data-view-jump="workoutView">Change</button></div>
+          <div class="panel-head"><h3>⚡ TODAY'S SESSION + RINGS</h3><button class="link-btn" data-view-jump="workoutView">Change</button></div>
           <div id="todaySession" class="session-box"></div>
+          <canvas id="ringsCanvas" height="160"></canvas>
         </article>
+
         <div class="quick-grid">
-          <button data-open="bodyDialog"><span>⚖️</span><strong>Log Weight</strong></button>
-          <button data-open="mealDialog"><span>🍽️</span><strong>Log Meal</strong></button>
+          <button data-open="bodyDialog"><span>⚖️</span><strong>Log Weight (Xiaomi Scale / Zepp)</strong></button>
+          <button data-open="mealDialog"><span>🍽️</span><strong>Log Meal 📸</strong></button>
           <button data-open="workoutDialog"><span>💪</span><strong>Log Workout</strong></button>
+          <button data-open="sleepDialog"><span>😴</span><strong>Log Sleep</strong></button>
+          <button data-open="stepsDialog"><span>🚶</span><strong>Log Steps</strong></button>
+          <button data-open="hrDialog"><span>❤️</span><strong>Log Heart Rate</strong></button>
+          <button data-open="importDialog"><span>⌚</span><strong>Import Garmin/Strava/Zepp</strong></button>
           <button data-view-jump="photosView"><span>📸</span><strong>Progress Photos</strong></button>
         </div>
-        <article class="panel">
-          <div class="panel-head"><h3>Today's logs</h3><button id="refreshButton" class="link-btn">Refresh</button></div>
-          <div id="todayLogs"></div>
-        </article>
+
+        <article class="panel"><div class="panel-head"><h3>Today's logs</h3><button id="refreshButton" class="link-btn">Refresh</button></div><div id="todayLogs"></div></article>
       </section>
 
       <section id="workoutView" class="view">
@@ -97,116 +112,71 @@
         <article class="panel" style="margin-top:16px"><h3>Recent</h3><div id="recentWorkouts"></div></article>
       </section>
 
+      <section id="activityView" class="view">
+        <h2>Activity • Steps • Heart</h2>
+        <article class="panel"><h3>STEPS - LAST 14 DAYS</h3><canvas id="stepsChart" height="180"></canvas></article>
+        <article class="panel"><h3>HEART RATE TREND</h3><canvas id="hrChart" height="180"></canvas><div class="stats-grid" style="margin-top:10px"><div class="stat small"><span>RESTING HR</span><strong id="restingHrVal">--</strong></div><div class="stat small"><span>EST VO2MAX</span><strong id="vo2Val">--</strong></div><div class="stat small"><span>AVG HR</span><strong id="avgHrVal">--</strong></div></div></article>
+        <article class="panel"><h3>SLEEP QUALITY</h3><canvas id="sleepChart" height="180"></canvas><div id="sleepStats"></div></article>
+        <article class="panel"><h3>Walking Distance</h3><div id="distanceStats"></div></article>
+      </section>
+
       <section id="reportView" class="view">
-        <div class="hero"><h2>Report</h2><button id="genReportBtn" class="btn primary small">Generate AI Report</button></div>
-        
-        <article class="panel">
-          <h3>WEIGHT JOURNEY - LAST 7 DAYS</h3>
-          <canvas id="reportWeightChart" height="200"></canvas>
-          <div class="stats-grid" style="margin-top:12px">
-            <div class="stat dark small"><span>START WEEK</span><strong id="rStart">--</strong></div>
-            <div class="stat dark small"><span>NOW</span><strong id="rNow">--</strong></div>
-            <div class="stat small"><span>CHANGE</span><strong id="rChange">--</strong></div>
-          </div>
-        </article>
-
-        <article class="panel">
-          <h3>CALORIES - LAST 7 DAYS</h3>
-          <canvas id="reportCalChart" height="160"></canvas>
-          <div id="last7Summary" style="margin-top:12px"></div>
-        </article>
-
-        <article class="panel ai-panel">
-          <div class="panel-head"><h3>✦ AI WEEKLY INSIGHT</h3></div>
-          <div id="weeklyReport" class="ai-text">Tap Generate to get AI report...</div>
-        </article>
+        <div class="hero"><h2>Premium Report</h2><button id="genReportBtn" class="btn primary small">Generate AI Report</button></div>
+        <article class="panel"><h3>WEIGHT JOURNEY - LAST 7 DAYS</h3><canvas id="reportWeightChart" height="200"></canvas></article>
+        <article class="panel"><h3>CALORIES vs PROTEIN</h3><canvas id="reportCalChart" height="160"></canvas><div id="last7Summary" style="margin-top:12px"></div></article>
+        <article class="panel ai-panel"><div class="panel-head"><h3>✦ AI WEEKLY INSIGHT</h3></div><div id="weeklyReport" class="ai-text">Tap Generate...</div></article>
       </section>
 
       <section id="historyView" class="view">
         <h2>History</h2>
-        <article class="panel">
-          <h3>WEIGHT JOURNEY</h3>
-          <canvas id="weightChart" height="200"></canvas>
-          <div class="stats-grid" style="margin-top:12px">
-            <div class="stat dark small"><span>START</span><strong id="hStart">--</strong></div>
-            <div class="stat dark small"><span>NOW</span><strong id="hNow">--</strong></div>
-            <div class="stat small"><span>AVG</span><strong id="hRate">--</strong></div>
-          </div>
-          <div class="projection-grid" id="projection"></div>
-          <div id="last14" class="last14" style="margin-top:12px"></div>
-        </article>
+        <article class="panel"><h3>WEIGHT JOURNEY</h3><canvas id="weightChart" height="200"></canvas><div class="stats-grid" style="margin-top:12px"><div class="stat dark small"><span>START</span><strong id="hStart">--</strong></div><div class="stat dark small"><span>NOW</span><strong id="hNow">--</strong></div><div class="stat small"><span>AVG</span><strong id="hRate">--</strong></div></div><div class="projection-grid" id="projection"></div><div id="last14" class="last14" style="margin-top:12px"></div></article>
         <article class="panel"><h3>All logs</h3><div id="allLogs"></div></article>
       </section>
 
       <section id="photosView" class="view">
         <h2>Photos</h2>
-        <div class="panel">
-          <div class="grid2">
-            <button class="btn ghost" id="takePhotoBtn">📸 Take</button>
-            <label class="btn ghost file-btn">Library<input type="file" id="photoFileInput" accept="image/*" hidden></label>
-          </div>
-          <div style="margin-top:12px;display:flex;gap:8px">
-            <select id="photoType"><option>Front</option><option>Back</option><option>Side</option></select>
-            <input type="file" id="hiddenCameraInput" accept="image/*" capture="environment" hidden>
-          </div>
-        </div>
+        <div class="panel"><div class="grid2"><button class="btn ghost" id="takePhotoBtn">📸 Take</button><label class="btn ghost file-btn">Library<input type="file" id="photoFileInput" accept="image/*" hidden></label></div><div style="margin-top:12px;display:flex;gap:8px"><select id="photoType"><option>Front</option><option>Back</option><option>Side</option></select><input type="file" id="hiddenCameraInput" accept="image/*" capture="environment" hidden></div></div>
         <div id="photoGrid" class="photo-grid"></div>
       </section>
 
+      <section id="integrationsView" class="view">
+        <h2>Integrations • 0 Cost</h2>
+        <article class="panel"><h3>⌚ Garmin Watch</h3><p class="muted">Export from Garmin Connect > Activities > Export CSV. Also Daily Steps CSV.</p><ul class="muted small"><li>Garmin Connect web > Activities > ⚙️ Export CSV</li><li>Garmin Connect > Health Stats > Steps > Export</li><li>Upload below - no API key needed</li></ul><input type="file" id="garminFile" accept=".csv,.json"><button onclick="handleGarminImport()" class="btn primary small" style="margin-top:8px">Import Garmin CSV</button><div id="garminStatus" class="muted"></div></article>
+        <article class="panel"><h3>🏃 Strava</h3><p class="muted">Strava > Settings > Delete/Download > Request Export. You'll get activities.csv</p><input type="file" id="stravaFile" accept=".csv"><button onclick="handleStravaImport()" class="btn primary small" style="margin-top:8px">Import Strava CSV</button><div id="stravaStatus" class="muted"></div></article>
+        <article class="panel"><h3>⚖️ Xiaomi Scale + Zepp Life (Mi Fit)</h3><p class="muted">Zepp Life app > Profile > My Data > Export or use Zepp app export. CSV with weight.</p><input type="file" id="zeppFile" accept=".csv"><button onclick="handleZeppImport()" class="btn primary small" style="margin-top:8px">Import Zepp Weight CSV</button><div id="zeppStatus" class="muted"></div></article>
+        <article class="panel"><h3>How to automate (still 0 cost)</h3><p class="muted">1. Garmin auto-sync to Strava (free in Garmin Connect > Settings > Third-party apps > Strava)<br>2. Zepp Life auto-sync weight to Google Fit (free)<br>3. Then export once a week - 2 clicks.<br><br>Premium tip: Use <b>Health Connect</b> on Android to aggregate Garmin+Zepp+Strava then export from there.</p></article>
+      </section>
+
       <section id="profileView" class="view">
-        <h2>Profile</h2>
+        <h2>Profile v4</h2>
         <form id="profileForm" class="panel form-grid"></form>
-        <article class="panel">
-          <h3>🤖 AI Keys</h3>
-          <p class="muted">Paste 1 key to enable food photo AI. Gemini best for photos.</p>
-          <label>Groq API Key (Meta Llama) - gsk_...<input id="groqKeyInput" placeholder="gsk_..."></label>
-          <label style="margin-top:10px">Gemini API Key (Google) - must start with AIza...<input id="geminiKeyInput" placeholder="AIzaSy..."></label>
-          <div class="button-row" style="margin-top:14px"><button id="saveKeysBtn" class="btn primary" type="button">Save Keys</button><button id="testAIButton" class="btn ghost" type="button">Test Photo AI</button></div>
-          <small id="keyStatus" class="muted" style="display:block;margin-top:10px"></small>
-          <div class="button-row" style="margin-top:14px"><button id="exportButton" class="btn ghost" type="button">Export JSON</button><button id="deleteAccountData" class="btn danger" type="button">Delete health data</button></div>
-          <small class="muted" style="display:block;margin-top:12px">Get keys:<br>• Groq: console.groq.com → API Keys<br>• Gemini: aistudio.google.com/app/apikey → Create API Key (starts with AIza... not AQ.)</small>
-          <button class="btn ghost full" style="margin-top:12px" type="button" data-view-jump="photosView">📸 Go to Progress Photos</button>
-        </article>
+        <article class="panel"><h3>🤖 AI Keys (Free)</h3><label>Groq API Key gsk_...<input id="groqKeyInput" placeholder="gsk_..."></label><label style="margin-top:10px">Gemini API Key AIza...<input id="geminiKeyInput" placeholder="AIzaSy..."></label><div class="button-row" style="margin-top:14px"><button id="saveKeysBtn" class="btn primary" type="button">Save Keys</button><button id="testAIButton" class="btn ghost" type="button">Test AI</button></div><small id="keyStatus" class="muted" style="display:block;margin-top:10px"></small></article>
+        <article class="panel"><h3>Data</h3><div class="button-row"><button id="exportButton" class="btn ghost" type="button">Export JSON</button><button id="deleteAccountData" class="btn danger" type="button">Delete health data</button></div></article>
       </section>
     </main>
 
-    <nav class="bottom-nav five">
+    <nav class="bottom-nav six">
       <button class="nav active" data-view="homeView"><span>⌂</span>Home</button>
+      <button class="nav" data-view="activityView"><span>❤️</span>Activity</button>
       <button class="nav" data-view="workoutView"><span>💪</span>Workout</button>
       <button class="nav" data-view="reportView"><span>📊</span>Report</button>
-      <button class="nav" data-view="historyView"><span>🕘</span>History</button>
+      <button class="nav" data-view="integrationsView"><span>⌚</span>Sync</button>
       <button class="nav" data-view="profileView"><span>◎</span>Profile</button>
     </nav>
   </div>
 
-  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal</h3><button data-close type="button">×</button></header>
-    <div class="kpi-row"><div><span>KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div>
-    <div class="tabs small" id="mealCatTabs"></div>
-    <div id="mealOptions" class="meal-options"></div>
-    <div id="mealSelected" class="selected-list"></div>
-    <div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Add Gemini key in Profile for photo AI (AIza...).</small></div>
-    <div class="custom-add"><input id="customFoodName" placeholder="Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
-    <button class="btn primary" type="submit" id="logMealBtn">Log 0</button>
-  </form></dialog>
-
-  <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight</h3><button data-close type="button">×</button></header>
-    <label>Weight kg<input name="weight_kg" type="number" step="0.1" required></label>
-    <label>Date<input name="logged_at" type="datetime-local" required></label>
-    <button class="btn primary">Save</button>
-  </form></dialog>
-
-  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header>
-    <label>Activity<input name="activity_name" required></label>
-    <div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div>
-    <label>Date<input name="logged_at" type="datetime-local" required></label>
-    <button class="btn primary">Save</button>
-  </form></dialog>
-
-  <dialog id="photoDialog"><form class="dialog-form"><header><h3>Add Photo</h3><button data-close type="button">×</button></header>
-    <button type="button" class="btn primary" onclick="document.getElementById('photoFileInput').click()">Choose</button>
-  </form></dialog>
+  <!-- Dialogs -->
+  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal</h3><button data-close type="button">×</button></header><div class="kpi-row"><div><span>KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div><div class="tabs small" id="mealCatTabs"></div><div id="mealOptions" class="meal-options"></div><div id="mealSelected" class="selected-list"></div><div style="display:grid;gap:8px"><label class="btn ghost file-btn" style="text-align:center">📸 Analyze Food Photo<input type="file" id="foodPhotoInput" accept="image/*" hidden></label><small id="foodPhotoStatus" class="muted">Gemini key required</small></div><div class="custom-add"><input id="customFoodName" placeholder="Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div><button class="btn primary" type="submit" id="logMealBtn">Log 0</button></form></dialog>
+  <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight (Xiaomi Scale)</h3><button data-close type="button">×</button></header><label>Weight kg<input name="weight_kg" type="number" step="0.1" required></label><label>Body fat % (optional)<input name="body_fat" type="number" step="0.1"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header><label>Activity<input name="activity_name" required placeholder="Running, Garmin, Strava..."></label><div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div><label>Distance km (if Strava/Garmin)<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="sleepDialog"><form id="sleepForm" class="dialog-form"><header><h3>Log Sleep (Garmin auto)</h3><button data-close type="button">×</button></header><div class="grid2"><label>Hours<input name="duration_hours" type="number" step="0.1" required></label><label>Quality 1-5<input name="quality" type="number" min="1" max="5" value="3"></label></div><div class="grid2"><label>Deep min<input name="deep_minutes" type="number"></label><label>Light min<input name="light_minutes" type="number"></label></div><div class="grid2"><label>REM min<input name="rem_minutes" type="number"></label><label>Awake min<input name="awake_minutes" type="number"></label></div><label>Sleep score 0-100 (Garmin)<input name="score" type="number"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="stepsDialog"><form id="stepsForm" class="dialog-form"><header><h3>Log Steps / Walk</h3><button data-close type="button">×</button></header><label>Steps<input name="steps" type="number" required></label><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Calories burned<input name="calories_burned" type="number"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="hrDialog"><form id="hrForm" class="dialog-form"><header><h3>Log Heart Rate</h3><button data-close type="button">×</button></header><label>BPM now<input name="bpm" type="number" required></label><div class="grid2"><label>Resting BPM<input name="resting_bpm" type="number"></label><label>Avg BPM<input name="avg_bpm" type="number"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="importDialog"><form class="dialog-form" onsubmit="return false"><header><h3>Import Center</h3><button data-close type="button">×</button></header><p class="muted">Use Sync tab for Garmin/Strava/Zepp. Or quick CSV here.</p><input type="file" id="quickImportFile" accept=".csv"><select id="quickImportType"><option value="zepp">Zepp Weight</option><option value="garmin">Garmin Steps/Activity</option><option value="strava">Strava Activities</option></select><button class="btn primary" onclick="handleQuickImport()">Import</button><div id="quickImportStatus" class="muted"></div></form></dialog>
 
   <script src="./foods.js"></script>
+  <script src="./health.js"></script>
+  <script src="./integrations.js"></script>
   <script src="./ai.js"></script>
   <script src="./app.js" defer></script>
 </body>

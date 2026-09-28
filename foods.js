@@ -1,5 +1,5 @@
-// Favourite Malaysian foods database - inspired by video, with S/M/L sizes
-// calories are estimated, ±15% variance as noted in video
+
+// Favourite Malaysian foods database - v4 enhanced
 const FOOD_DB = {
   Breakfast: [
     {name:"3 Boiled Eggs", kcal:223, protein:18, carbs:2, fat:15},
@@ -7,6 +7,7 @@ const FOOD_DB = {
     {name:"Nasi Lemak + Ayam Goreng + Telur", kcal:620, protein:28, carbs:55, fat:32},
     {name:"Roti Canai Kosong (1 pcs)", kcal:180, protein:4, carbs:22, fat:9},
     {name:"Tosai + Dhal", kcal:220, protein:6, carbs:30, fat:8},
+    {name:"Overnight Oats + Protein", kcal:350, protein:25, carbs:45, fat:8},
   ],
   Main: [
     {name:"Nasi Kerabu + Daging Bakar + Telur Masin + Solok Lada + Ulam", kcal:775, protein:50, carbs:70, fat:28, variants:true},
@@ -18,23 +19,25 @@ const FOOD_DB = {
     {name:"Nasi Putih + Ikan Bakar + Ulam", kcal:470, protein:35, carbs:48, fat:12},
     {name:"Nasi Goreng Kampung", kcal:550, protein:18, carbs:65, fat:20},
     {name:"Nasi Goreng Ayam", kcal:620, protein:30, carbs:68, fat:22},
+    {name:"Chicken Rice (Nasi Ayam)", kcal:600, protein:30, carbs:65, fat:20},
   ],
   Protein: [
     {name:"Chicken Breast", sizes:{S:{kcal:165, protein:31, raw:"100g"}, M:{kcal:275, protein:51, raw:"165g"}, L:{kcal:380, protein:70, raw:"225g"}}},
     {name:"Salmon", sizes:{S:{kcal:180, protein:20, raw:"100g"}, M:{kcal:300, protein:34, raw:"165g"}, L:{kcal:410, protein:46, raw:"225g"}}},
     {name:"Beef Tenderloin", sizes:{S:{kcal:200, protein:26, raw:"100g"}, M:{kcal:330, protein:43, raw:"165g"}, L:{kcal:450, protein:59, raw:"225g"}}},
     {name:"Chicken Leg", sizes:{S:{kcal:180, protein:18, raw:"100g"}, M:{kcal:300, protein:30, raw:"165g"}, L:{kcal:410, protein:41, raw:"225g"}}},
-    {name:"Ikan Kembung Bakar (1 ekor)", kcal:180, protein:22, carbs:0, fat:8},
-    {name:"Telur Mata (1 biji)", kcal:90, protein:6, carbs:1, fat:7},
+    {name:"Grilled Mackerel (1 fish)", kcal:180, protein:22, carbs:0, fat:8},
+    {name:"Sunny Side Up Egg (1 egg)", kcal:90, protein:6, carbs:1, fat:7},
+    {name:"Whey Protein + Water", kcal:120, protein:24, carbs:3, fat:1},
   ],
   Snack: [
     {name:"Konjac Jelly - Watermelon (1 pack)", kcal:6, protein:0},
     {name:"Konjac Jelly - Apple/Grape (1 pack)", kcal:6, protein:0},
     {name:"Konjac Jelly - Lychee/Peach (1 pack)", kcal:7, protein:0},
-    {name:"Telur Rebus (1 egg)", kcal:78, protein:6},
+    {name:"Boiled Egg (1 egg)", kcal:78, protein:6},
     {name:"Tauhu Bakar (100g)", kcal:144, protein:10},
-    {name:"Jagung Rebus (1 medium cob)", kcal:88, protein:3},
-    {name:"Buah Oren (1 medium ~130g)", kcal:62, protein:1},
+    {name:"Boiled Corn (1 medium cob)", kcal:88, protein:3},
+    {name:"Orange (1 medium ~130g)", kcal:62, protein:1},
     {name:"Watermelon (1 slice ~150g)", kcal:46, protein:1},
     {name:"Greek Yogurt Fernleaf (100g)", kcal:80, protein:6},
     {name:"Epok-epok Sardine (1 pcs)", kcal:120, protein:4},
@@ -42,18 +45,16 @@ const FOOD_DB = {
   Drink: [
     {name:"Coke Zero (1 can)", kcal:0, protein:0},
     {name:"Monster Ultra White (1 can 473ml)", kcal:10, protein:0},
-    {name:"Air Kelapa (1 cup 240ml)", kcal:46, protein:0},
-    {name:"Air Kosong", kcal:0, protein:0},
-    {name:"Teh O Kosong", kcal:2, protein:0},
-    {name:"Kopi O Kosong", kcal:4, protein:0},
+    {name:"Coconut Water (1 cup 240ml)", kcal:46, protein:0},
+    {name:"Plain Water", kcal:0, protein:0},
+    {name:"Plain Tea No Sugar", kcal:2, protein:0},
+    {name:"Black Coffee No Sugar", kcal:4, protein:0},
     {name:"Protein Shake (1 scoop)", kcal:120, protein:24},
   ],
   Condiment: [
-    {name:"Sambal Belacan - cooked (1 tbsp)", kcal:20, protein:1},
+    {name:"Shrimp Chili Paste - cooked (1 tbsp)", kcal:20, protein:1},
     {name:"Budu (1 tbsp ~15g)", kcal:15, protein:1},
-    {name:"Maggi Cili Sos (1 tbsp ~15g)", kcal:27, protein:0},
-    {name:"Life Sos Black Pepper (1 tbsp ~15g)", kcal:19, protein:0},
-    {name:"Aiman's Custom Sauce (equal cili sos + blackpepper + yogurt, 3 tbsp total)", kcal:45, protein:2},
+    {name:"Chili Sauce (1 tbsp ~15g)", kcal:27, protein:0},
   ]
 };
 
@@ -92,5 +93,10 @@ const WORKOUT_TEMPLATES = {
     {name:"Lat Pulldown", sets:3, reps:10, weight:0},
     {name:"Shoulder Press", sets:3, reps:10, weight:0},
     {name:"Plank (seconds)", sets:3, reps:60, weight:0},
+  ],
+  "Garmin Run": [
+    {name:"Warmup Walk 5min", sets:1, reps:5, weight:0},
+    {name:"Easy Run", sets:1, reps:30, weight:0},
+    {name:"Cooldown Walk", sets:1, reps:5, weight:0},
   ]
 };

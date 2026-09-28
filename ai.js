@@ -1,51 +1,48 @@
 
-// Free AI Engine - v3.1 FIXED with Groq + Gemini + robust parser
+// AI Engine v4 - Premium - 100% English
 const AI = {
   getConfig(){ try{return JSON.parse(localStorage.getItem('fitness-ai-supabase-config')||'{}')}catch{return{}} },
 
   async generateCheckin(profile, yesterday){
     const cfg = this.getConfig();
-    if(cfg.groqKey){
-      try{ return await this.groqCheckin(profile, yesterday); }catch(e){ console.warn("groq fail",e) }
-    }
-    if(cfg.geminiKey){
-      try{ return await this.geminiCheckin(profile, yesterday); }catch(e){ console.warn("gemini fail",e) }
-    }
+    if(cfg.groqKey){ try{ return await this.groqCheckin(profile, yesterday); }catch(e){ console.warn(e) } }
+    if(cfg.geminiKey){ try{ return await this.geminiCheckin(profile, yesterday); }catch(e){ console.warn(e) } }
     return this.localCheckin(profile, yesterday);
   },
 
   localCheckin(profile, y){
-    const name = profile.full_name?.split(' ')[0] || 'bro';
+    const name = profile.full_name?.split(' ')[0] || 'there';
+    const parts=[];
+    parts.push(`Hey ${name}, here's yesterday:`);
+    if(y.workoutCount>0) parts.push(`💪 Completed ${y.workoutCount} workout${y.workoutCount>1?'s':''}`);
+    else parts.push(`No workout logged`);
+    if(y.steps) parts.push(`🚶 ${y.steps.toLocaleString()} steps (${y.distance?.toFixed(1)} km)`);
+    if(y.sleepHours) parts.push(`😴 ${y.sleepHours.toFixed(1)}h sleep${y.sleepScore?` (Score ${y.sleepScore})`:''}`);
+    if(y.avgHR) parts.push(`❤️ Avg ${y.avgHR} bpm`);
     const calDiff = y.targetCal - y.calories;
     const proDiff = y.targetPro - y.protein;
-    const hasWorkout = y.workoutCount > 0 || y.activities.length>0;
-    let msg = `Eh ${name}, semalam okay lah — `;
-    if(hasWorkout) msg += `workout siap, bagus tu! `;
-    else msg += `tak workout semalam. `;
-    if(calDiff>0 && proDiff>0) msg += `Tapi calories and protein both short lagi, ${calDiff} kcal and ${proDiff}g protein below target. `;
-    else if(calDiff>0) msg += `Calories short ${calDiff} kcal lagi. `;
-    else if(proDiff>0) msg += `Protein short ${proDiff}g lagi. `;
-    else msg += `Calories and protein cukup, nice! `;
-    if(proDiff>20) msg += `Hari ni tambah another chicken breast or protein shake, jangan ulang mistake semalam!`;
-    else if(!hasWorkout) msg += `Hari ni buat workout ringan pun okay, janji gerak.`;
-    else msg += `Keep momentum hari ni!`;
-    return msg;
+    if(calDiff>150) parts.push(`You were ${calDiff} kcal under target`);
+    if(proDiff>15) parts.push(`Protein short by ${proDiff}g - add a chicken breast or shake today`);
+    if(y.calories>=y.targetCal*0.9 && y.protein>=y.targetPro*0.9) parts.push(`Nutrition was on point - great job!`);
+    if(!y.sleepHours || y.sleepHours<6) parts.push(`Aim for 7.5h sleep tonight for better recovery`);
+    if(y.recovery) parts.push(`Recovery ${y.recovery}% - ${y.readiness?.label}`);
+    return parts.join(' • ') + '. Keep the momentum going today!';
   },
 
   async groqCheckin(profile, y){
     const cfg = this.getConfig();
-    const prompt = `You are a fitness coach for ${profile.full_name}. Height ${profile.height_cm}cm, goal ${profile.primary_goal}. Yesterday: ${y.calories}/${y.targetCal} kcal, ${y.protein}/${y.targetPro}g protein, workout: ${y.workoutCount>0?'yes':'no'}. Give short check-in in mix Malay-English like "Eh Aiman, semalam okay lah..." Keep under 50 words, casual, encouraging.`;
+    const prompt = `You are an English fitness coach for ${profile.full_name}, goal ${profile.primary_goal}. Yesterday: calories ${y.calories}/${y.targetCal}, protein ${y.protein}/${y.targetPro}g, steps ${y.steps||0}/${profile.target_steps||10000}, sleep ${y.sleepHours||0}h score ${y.sleepScore||0}, avg HR ${y.avgHR||0}, workouts ${y.workoutCount}, recovery ${y.recovery||50}%. Write a short encouraging check-in under 60 words in 100% English with emoji. No Malay.`;
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
       method:"POST",
       headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
-      body: JSON.stringify({model:"llama-3.1-8b-instant", messages:[{role:"user", content:prompt}], max_tokens:120})
+      body: JSON.stringify({model:"llama-3.1-8b-instant", messages:[{role:"user", content:prompt}], max_tokens:150})
     });
     const data = await res.json();
     return data.choices?.[0]?.message?.content || this.localCheckin(profile,y);
   },
   async geminiCheckin(profile, y){
     const cfg = this.getConfig();
-    const prompt = `You are a fitness coach for ${profile.full_name}. Yesterday: ${y.calories}/${y.targetCal} kcal, ${y.protein}/${y.targetPro}g protein. Give short check-in Malay-English under 50 words.`;
+    const prompt = `English fitness coach only. ${profile.full_name} yesterday: ${y.calories}/${y.targetCal} kcal, ${y.protein}/${y.targetPro}g, steps ${y.steps||0}, sleep ${y.sleepHours||0}h, HR ${y.avgHR||0}. Under 60 words, English only, encouraging.`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({contents:[{parts:[{text:prompt}]}]})
@@ -56,8 +53,8 @@ const AI = {
 
   async generateWeeklyReport(profile, last7){
     const cfg = this.getConfig();
-    if(cfg.groqKey){ try{ return await this.groqWeekly(profile, last7); }catch(e){} }
-    if(cfg.geminiKey){ try{ return await this.geminiWeekly(profile, last7); }catch(e){} }
+    if(cfg.groqKey){ try{ return await this.groqWeekly(profile, last7); }catch{} }
+    if(cfg.geminiKey){ try{ return await this.geminiWeekly(profile, last7); }catch{} }
     return this.localWeekly(profile, last7);
   },
   localWeekly(profile, last7){
@@ -66,23 +63,33 @@ const AI = {
     const change = startW? (nowW - startW).toFixed(1) : "0";
     const avgCal = last7.meals.length? Math.round(last7.totalCal / 7) : 0;
     const avgPro = last7.meals.length? Math.round(last7.totalPro / 7) : 0;
-    let report = `WEEKLY REPORT - ${new Date().toLocaleDateString('en-GB', {day:'numeric', month:'short'})}\n\nWeight: ${change}kg change (${startW}kg to ${nowW}kg)\nAvg ${avgCal} kcal / ${avgPro}g protein vs target ${profile.target_calories}/${profile.target_protein_g}g\nWorkouts: ${last7.workoutCount}\n\nKeep going bro!`;
-    return report;
+    const avgSteps = last7.steps.length? Math.round(last7.steps.reduce((s,x)=>s+x.steps,0)/7):0;
+    const avgSleep = last7.sleep.length? (last7.sleep.reduce((s,x)=>s+Number(x.duration_hours),0)/7).toFixed(1):0;
+    const avgHR = last7.hr.length? Math.round(last7.hr.reduce((s,x)=>s+x.bpm,0)/last7.hr.length):0;
+    return `WEEKLY REPORT - ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
+
+Weight: ${change} kg change (${startW} kg -> ${nowW} kg)
+Food: Avg ${avgCal} kcal / ${avgPro}g protein vs target ${profile.target_calories}/${profile.target_protein_g}g
+Activity: ${avgSteps.toLocaleString()} steps/day, ${last7.workoutCount} workouts, ${last7.totalDistance?.toFixed(1)||0} km total
+Sleep: ${avgSleep}h average, Recovery ${last7.avgRecovery||50}%
+Heart: ${avgHR? avgHR+' bpm average, estimated VO2max '+Health.estimateVO2Max(profile.resting_hr||60, 30, profile.sex_at_birth):'No heart rate data'}
+
+Focus for next week: ${avgSleep<7?'Prioritize 7.5h sleep. ':''}${avgPro<profile.target_protein_g*0.8?'Increase protein intake. ':''}${avgSteps<8000?'Aim for 10k steps daily.':''}`.trim();
   },
   async groqWeekly(profile, last7){
     const cfg = this.getConfig();
-    const prompt = `Fitness coach. Profile: ${JSON.stringify(profile)}. Last 7 days: ${JSON.stringify({totalCal:last7.totalCal, totalPro:last7.totalPro, workoutCount:last7.workoutCount})}. Write weekly report 4 sections: Weight, Food, Workout, What to Improve. Casual Malay-English. Max 200 words.`;
+    const prompt = `Premium fitness coach, English only. Profile ${JSON.stringify({name:profile.full_name, goal:profile.primary_goal, target:profile.target_weight_kg})}. Last 7 days: ${JSON.stringify({cal:last7.totalCal, pro:last7.totalPro, workouts:last7.workoutCount, steps:last7.steps.reduce((s,x)=>s+x.steps,0), sleep:last7.sleep.length, avgHR:last7.hr[0]?.bpm, weightChange:last7.weightChange})}. Write report with 5 sections: Weight, Nutrition, Activity & Steps, Sleep & Recovery, Heart Rate & VO2max, What to Improve. English only, max 250 words with emoji.`;
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
       method:"POST",
       headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
-      body: JSON.stringify({model:"llama-3.1-8b-instant", messages:[{role:"user", content:prompt}], max_tokens:350})
+      body: JSON.stringify({model:"llama-3.1-8b-instant", messages:[{role:"user", content:prompt}], max_tokens:500})
     });
     const data = await res.json();
     return data.choices?.[0]?.message?.content || this.localWeekly(profile, last7);
   },
   async geminiWeekly(profile, last7){
     const cfg = this.getConfig();
-    const prompt = `Fitness coach weekly report. Profile: ${JSON.stringify(profile)}. Data: ${JSON.stringify({totalCal:last7.totalCal, totalPro:last7.totalPro, workoutCount:last7.workoutCount})}. Write 4 sections. Malay-English. Max 200 words.`;
+    const prompt = `Weekly fitness report English only with 5 sections Weight/Nutrition/Activity/Sleep/Heart. Data ${JSON.stringify({totalCal:last7.totalCal, workoutCount:last7.workoutCount, steps:last7.steps.length})}. Max 250 words English.`;
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({contents:[{parts:[{text:prompt}]}]})
@@ -91,21 +98,14 @@ const AI = {
     return data.candidates?.[0]?.content?.parts?.[0]?.text || this.localWeekly(profile, last7);
   },
 
-  // Robust JSON extractor
   extractJson(text){
     if(!text) return null;
-    // Try direct parse
     try{ return JSON.parse(text); }catch{}
-    // Remove markdown fences
     let clean = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-    // Find { ... } biggest
     const matches = clean.match(/\{[\s\S]*\}/g);
     if(matches){
       for(let m of matches.reverse()){
-        try{ return JSON.parse(m); }catch{
-          // try fix single quotes
-          try{ return JSON.parse(m.replace(/'/g,'"')); }catch{}
-        }
+        try{ return JSON.parse(m); }catch{ try{ return JSON.parse(m.replace(/'/g,'"')); }catch{} }
       }
     }
     return null;
@@ -113,25 +113,19 @@ const AI = {
 
   async analyzeFoodPhoto(file){
     const cfg = this.getConfig();
-    const hasGroq = !!cfg.groqKey;
     const hasGemini = !!cfg.geminiKey;
-    if(!hasGroq && !hasGemini) return {error: "Add Groq key (gsk_...) OR Gemini key (AIza...) in Profile > Settings. Get free: console.groq.com or aistudio.google.com/app/apikey"};
-
+    if(!hasGemini && !cfg.groqKey) return {error: "Add Gemini API key (AIza...) in Profile > Settings. Get free at aistudio.google.com/app/apikey"};
     const base64 = await new Promise(res=>{
       const r = new FileReader();
       r.onload = ()=> res(r.result.split(',')[1]);
       r.readAsDataURL(file);
     });
     const mime = file.type || 'image/jpeg';
-
-    const prompt = `You are a nutrition expert. Look at this food photo. Estimate dish name (Malaysian if possible like Nasi Kerabu, Nasi Lemak, etc), calories, protein_g, carbs_g, fat_g. Return ONLY JSON with no extra text: {"name":"Dish Name","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10}`;
-
-    // Try Gemini first - more reliable for vision
+    const prompt = `You are a nutrition expert. Estimate dish name, calories, protein_g, carbs_g, fat_g. Return ONLY JSON: {"name":"Dish Name","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10}`;
     if(hasGemini){
       try{
         const gemRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
+          method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
             contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime, data:base64}}]}],
             generationConfig:{temperature:0.2, maxOutputTokens:300}
@@ -142,38 +136,11 @@ const AI = {
         const text = gemData.candidates?.[0]?.content?.parts?.[0]?.text || "";
         const json = this.extractJson(text);
         if(json && json.calories) return json;
-        throw new Error("Gemini no JSON: "+text);
+        throw new Error("No JSON: "+text);
       }catch(e){
-        console.warn("Gemini vision failed", e.message);
-        if(!hasGroq) return {error: "Gemini failed: "+e.message+" - Try clearer photo"};
+        return {error: "Gemini failed: "+e.message+" - Try a clearer photo"};
       }
     }
-
-    // Try Groq vision models (fallback, some deprecated)
-    if(hasGroq){
-      const models = ["meta-llama/llama-4-scout-17b-16e-instruct","meta-llama/llama-4-maverick-17b-128e-instruct","llama-3.2-90b-vision-preview","llama-3.2-11b-vision-preview"];
-      for(let model of models){
-        try{
-          const response = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-            method:"POST",
-            headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
-            body: JSON.stringify({
-              model:model,
-              messages:[{role:"user", content:[{type:"text", text:prompt},{type:"image_url", image_url:{url:`data:${mime};base64,${base64}`}}]}],
-              max_tokens:400, temperature:0.2
-            })
-          });
-          const data = await response.json();
-          if(data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-          const text = data.choices?.[0]?.message?.content || "";
-          const json = this.extractJson(text);
-          if(json && json.calories) return json;
-        }catch(e){
-          console.warn(`Groq model ${model} failed:`, e.message);
-          continue;
-        }
-      }
-      return {error: "All Groq vision models failed. Groq deprecated vision. Try Gemini key instead (more reliable for photos) - get free at aistudio.google.com/app/apikey"};
-    }
+    return {error: "Use Gemini for food photos - Groq vision is deprecated"};
   }
 };
