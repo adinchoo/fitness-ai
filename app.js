@@ -145,28 +145,28 @@ function initUI(){
   buildProfileForm();
   $("#refreshButton").onclick=async()=>{ await loadRecords(); render(); toast("Refreshed") };
   $("#exportButton").onclick=exportJSON;
-  // Puter hardcoded - no keys needed
+  const saveKeys=()=>{
+    const c=config()||{}; const groq=$("#groqKeyInput")?.value.trim()||""; const gemini=$("#geminiKeyInput")?.value.trim()||"";
+    if(gemini && !gemini.startsWith("AIza")){ toast("Gemini must start with AIza...",true); return; }
+    c.groqKey=groq; c.geminiKey=gemini; localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); toast("Keys saved"); $("#keyStatus").textContent="✅ Saved "+(groq?"Groq ":"")+(gemini?"Gemini":""); updateAIMode();
+  };
+  if($("#saveKeysBtn")) $("#saveKeysBtn").onclick=saveKeys;
+  if($("#groqKeyInput")) $("#groqKeyInput").value=config()?.groqKey||"";
+  if($("#geminiKeyInput")) $("#geminiKeyInput").value=config()?.geminiKey||"";
   if($("#testAIButton")) $("#testAIButton").onclick=async()=>{
-    const out=$("#puterTestOutput");
-    if(out){ out.style.display='block'; out.textContent='Testing Puter AI...'; }
-    $("#keyStatus").textContent="Testing Puter...";
+    const c=config()||{}; if(!c.geminiKey && !c.groqKey){ toast("Add key",true); return; }
+    $("#keyStatus").textContent="Testing...";
     try{
-      // This is exactly your example
-      const response = await puter.ai.chat("Classify the following text as positive, negative, or neutral: 'The product works well but the delivery was late.'", {
-        model: 'google/gemini-2.5-flash-lite'
-      });
-      const text = typeof response === 'string' ? response : response.message?.content || JSON.stringify(response);
-      if(out) out.textContent = "✅ Puter Response:\n" + text;
-      $("#keyStatus").textContent="✅ Puter AI works! Model: gemini-2.5-flash-lite";
-      toast("Puter AI works - hardcoded!");
-      // Also test AI module
-      const checkin = await AI.testPuter();
-      console.log("AI.testPuter", checkin);
-    }catch(e){ 
-      $("#keyStatus").textContent="❌ "+e.message; 
-      if(out) out.textContent = "❌ Error: " + e.message + "\nMake sure https://js.puter.com/v2/ loaded";
-      toast(e.message,true); 
-    }
+      if(c.geminiKey){
+        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Say ok"}]}]})});
+        const data=await res.json(); if(data.error) throw new Error(data.error.message);
+        $("#keyStatus").textContent="✅ Gemini works!"; toast("Gemini works");
+      } else {
+        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+c.groqKey,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:"Say ok"}],max_tokens:10})});
+        const data=await res.json(); if(data.error) throw new Error(data.error.message);
+        $("#keyStatus").textContent="✅ Groq works!"; toast("Groq works");
+      }
+    }catch(e){ $("#keyStatus").textContent="❌ "+e.message; toast(e.message,true); }
   };
   updateAIMode();
   // Forms
@@ -189,9 +189,9 @@ function switchView(id){
 }
 
 function updateAIMode(){
+  const c=config()||{}; const hasGroq=!!c.groqKey; const hasGemini=!!c.geminiKey;
   const pill=$("#aiModePill"); if(!pill) return;
-  const isPuter = typeof puter !== "undefined";
-  pill.textContent = isPuter ? "Puter • Gemini 2.5 Flash" : "Local AI";
+  pill.textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
 }
 
 function getLast7Data(){

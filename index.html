@@ -7,7 +7,6 @@
   <title>Fitness AI Hub v4 Premium</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
-  <script src="https://js.puter.com/v2/"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -20,7 +19,8 @@
       <div class="notice">New tables: heart_rate_logs, steps_logs, sleep enhanced. Run supabase-schema-v4.sql first!</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
       <label>Publishable key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_..."></textarea></label>
-      <div class="notice">✅ AI is hardcoded with Puter.js - uses <code>puter.ai.chat</code> with <code>google/gemini-2.5-flash-lite</code> and vision <code>google/gemini-2.5-flash</code>. No API keys needed!</div>
+      <label>Groq Key (for AI coach)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
+      <label>Gemini Key (for Food Photo)<input id="setupGemini" type="text" placeholder="AIzaSy..."></label>
       <button class="btn primary" type="submit">Save and connect</button>
     </form>
   </section>
@@ -148,9 +148,9 @@
       </section>
 
       <section id="profileView" class="view">
-        <h2>Profile v4</h2>
+        <div class="panel" style="border:2px solid #5de8b6"><h3>🔗 Your Auto Sync URL - Ready for Health Auto Export (Lybron)</h3><div style="background:#0a1a2a;padding:12px;border-radius:10px;word-break:break-all;font-family:monospace;font-size:11px"><span id="finalUrl">https://edybozhpdaexeapywbeh.supabase.co/functions/v1/health-auto-export?user_id=e0c24919-3cec-466e-93e6-b9834e4d2011</span></div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary small" onclick="navigator.clipboard.writeText(document.getElementById('finalUrl').textContent); toast('URL copied!')">📋 Copy URL</button></div><small class="muted">User ID: <code>e0c24919-3cec-466e-93e6-b9834e4d2011</code></small></div><h2 style="margin-top:20px">Profile v4</h2>
         <form id="profileForm" class="panel form-grid"></form>
-        <article class="panel"><h3>🤖 AI - Hardcoded with Puter.js</h3><p class="muted">Powered by <code>puter.ai.chat</code> with <code>google/gemini-2.5-flash-lite</code> (text) and <code>google/gemini-2.5-flash</code> (food photo vision). No API keys needed - 100% free and unlimited via user-pays model.</p><div class="button-row" style="margin-top:14px"><button id="testAIButton" class="btn primary" type="button">Test Puter AI (from your example)</button></div><small id="keyStatus" class="muted" style="display:block;margin-top:10px">✅ Hardcoded: puter.ai.chat with gemini-3.5-flash-lite style</small><pre id="puterTestOutput" class="muted" style="margin-top:10px;white-space:pre-wrap;background:#0a1a2a;padding:10px;border-radius:8px;display:none"></pre></article>
+        <article class="panel"><h3>🤖 AI Keys (Free)</h3><label>Groq API Key gsk_...<input id="groqKeyInput" placeholder="gsk_..."></label><label style="margin-top:10px">Gemini API Key AIza...<input id="geminiKeyInput" placeholder="AIzaSy..."></label><div class="button-row" style="margin-top:14px"><button id="saveKeysBtn" class="btn primary" type="button">Save Keys</button><button id="testAIButton" class="btn ghost" type="button">Test AI</button></div><small id="keyStatus" class="muted" style="display:block;margin-top:10px"></small></article>
         <article class="panel"><h3>Data</h3><div class="button-row"><button id="exportButton" class="btn ghost" type="button">Export JSON</button><button id="deleteAccountData" class="btn danger" type="button">Delete health data</button></div></article>
       </section>
     </main>
