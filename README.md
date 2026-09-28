@@ -31,3 +31,11 @@ Or use Shortcuts: POST with header `Authorization: Bearer <your supabase access_
 
 Profile > Test Puter AI runs:
 puter.ai.chat("Classify...", {model: 'google/gemini-2.0-flash-lite'})
+
+
+## v7.1.2 Fixes
+- SQL: Removed DO loop and grants that cause 42601 error
+- Edge: Added GET handler for browser test
+- Edge: Added fallback secret token mode (HEALTH_SYNC_SECRET env)
+- Edge: Fixed sleep parsing (handles hours vs minutes)
+- Added detailed error array in response
