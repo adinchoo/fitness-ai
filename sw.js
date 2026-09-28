@@ -1,9 +1,9 @@
-const CACHE="fitness-ai-v7.1"; const ASSETS=["./","./index.html","./styles.css","./app.js","./foods.js","./ai.js","./health.js","./integrations.js","./apple-health.js","./manifest.webmanifest"];
-self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(ASSETS.map(u=>c.add(u)))).then(()=>self.skipWaiting()))});
-self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
+const CACHE="fitness-v7.3";
+const ASSETS=["./","./index.html","./styles.css","./app.js","./ai.js","./foods.js","./health.js","./integrations.js","./manifest.webmanifest"];
+self.addEventListener("install",e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS).catch(()=>{}))); self.skipWaiting(); });
+self.addEventListener("activate",e=>{ e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))); self.clients.claim(); });
 self.addEventListener("fetch",e=>{
   if(e.request.method!=="GET") return;
-  const url=new URL(e.request.url);
-  if(url.origin!==location.origin) return;
-  e.respondWith(fetch(e.request).then(r=>{ const c=r.clone(); caches.open(CACHE).then(cache=>cache.put(e.request,c)); return r }).catch(()=>caches.match(e.request).then(r=>r||caches.match("./index.html"))));
+  if(!e.request.url.startsWith(self.location.origin)) return;
+  e.respondWith(fetch(e.request).then(r=>{ const clone=r.clone(); caches.open(CACHE).then(c=>c.put(e.request, clone)); return r; }).catch(()=>caches.match(e.request)));
 });

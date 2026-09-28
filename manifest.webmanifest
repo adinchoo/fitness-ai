@@ -1,1 +1,19 @@
-{"id":"./","name":"Fitness AI Hub v7.2 Puter Only","short_name":"FitnessAI v7.2","description":"Premium fitness tracker Puter only - no API keys","start_url":"./","scope":"./","display":"standalone","orientation":"portrait","background_color":"#09131f","theme_color":"#09131f","icons":[{"src":"data:image/svg+xml,[STRIPPED]
+{
+  "background_color": "#09131f",
+  "description": "Meal camera + FIT + Puter AI",
+  "display": "standalone",
+  "icons": [
+    {
+      "sizes": "512x512",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><rect width='512' height='512' rx='120' fill='%2309131f'/></svg>",
+      "type": "image/svg+xml"
+    }
+  ],
+  "id": "./",
+  "name": "Fitness AI Hub v7.3 Full",
+  "orientation": "portrait",
+  "scope": "./",
+  "short_name": "FitnessAI v7.3",
+  "start_url": "./",
+  "theme_color": "#09131f"
+}

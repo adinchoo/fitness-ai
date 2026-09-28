@@ -125,9 +125,16 @@
         <article class="panel" style="border:2px solid #5de8b6">
           <h3>📁 FIT File - Cycling / Running (NEW)</h3>
           <p class="muted">Garmin, Wahoo, Zwift, Coros .fit - parsed 100% locally in browser. No upload to server.</p>
-          <input type="file" id="fitFile" accept=".fit">
+          <input type="file" id="fitFile" accept=".fit,.gpx">
           <button onclick="handleFitImport()" class="btn primary small" style="margin-top:8px">Import FIT</button>
-          <div id="fitStatus" class="muted" style="margin-top:8px;word-break:break-all"></div>
+          <article class="panel" style="border:2px solid #58a9ff">
+          <h3>🗺️ GPX File - Strava / Komoot (NEW)</h3>
+          <p class="muted">Any .gpx track - distance via GPS + HR if present.</p>
+          <input type="file" id="gpxFile" accept=".gpx">
+          <button onclick="handleGpxImport()" class="btn primary small" style="margin-top:8px">Import GPX</button>
+          <div id="gpxStatus" class="muted" style="margin-top:8px;word-break:break-all"></div>
+        </article>
+        <div id="fitStatus" class="muted" style="margin-top:8px;word-break:break-all"></div>
         </article>
         <article class="panel"><h3>⌚ Garmin Watch</h3><p class="muted">Garmin Connect CSV or FIT. If you have FIT, use FIT panel above - more accurate.</p><input type="file" id="garminFile" accept=".csv,.json,.fit"><button onclick="handleGarminImport()" class="btn primary small" style="margin-top:8px">Import Garmin</button><div id="garminStatus" class="muted"></div></article>
         <article class="panel"><h3>🏃 Strava</h3><p class="muted">Strava > Settings > Download > activities.csv</p><input type="file" id="stravaFile" accept=".csv"><button onclick="handleStravaImport()" class="btn primary small" style="margin-top:8px">Import Strava CSV</button><div id="stravaStatus" class="muted"></div></article>
@@ -180,7 +187,7 @@
   <dialog id="sleepDialog"><form id="sleepForm" class="dialog-form"><header><h3>Log Sleep</h3><button data-close type="button">×</button></header><div class="grid2"><label>Hours<input name="duration_hours" type="number" step="0.1" required></label><label>Quality 1-5<input name="quality" type="number" min="1" max="5" value="3"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
   <dialog id="stepsDialog"><form id="stepsForm" class="dialog-form"><header><h3>Log Steps / Walk</h3><button data-close type="button">×</button></header><label>Steps<input name="steps" type="number" required></label><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Calories burned<input name="calories_burned" type="number"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
   <dialog id="hrDialog"><form id="hrForm" class="dialog-form"><header><h3>Log Heart Rate</h3><button data-close type="button">×</button></header><label>BPM now<input name="bpm" type="number" required></label><div class="grid2"><label>Resting BPM<input name="resting_bpm" type="number"></label><label>Avg BPM<input name="avg_bpm" type="number"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="importDialog"><form class="dialog-form" onsubmit="return false"><header><h3>Import Center</h3><button data-close type="button">×</button></header><p class="muted">Supports FIT + CSV. FIT is more accurate for cycling/running.</p><input type="file" id="quickImportFile" accept=".csv,.fit"><select id="quickImportType"><option value="fit">FIT File (Cycling/Running)</option><option value="zepp">Zepp Weight</option><option value="garmin">Garmin CSV</option><option value="strava">Strava CSV</option></select><button class="btn primary" onclick="handleQuickImport()">Import</button><div id="quickImportStatus" class="muted"></div></form></dialog>
+  <dialog id="importDialog"><form class="dialog-form" onsubmit="return false"><header><h3>Import Center</h3><button data-close type="button">×</button></header><p class="muted">Supports FIT + CSV. FIT is more accurate for cycling/running.</p><input type="file" id="quickImportFile" accept=".csv,.fit,.gpx"><select id="quickImportType"><option value="fit">FIT File (Cycling/Running)</option><option value="zepp">Zepp Weight</option><option value="garmin">Garmin CSV</option><option value="strava">Strava CSV</option></select><button class="btn primary" onclick="handleQuickImport()">Import</button><div id="quickImportStatus" class="muted"></div></form></dialog>
 
   <script src="./foods.js"></script>
   <script src="./health.js"></script>

@@ -1,68 +1,42 @@
-// Favourite Malaysian foods database - v4 enhanced
 const FOOD_DB = {
-  Breakfast: [
-    {name:"3 Boiled Eggs", kcal:223, protein:18, carbs:2, fat:15},
-    {name:"Bubur Nasi + Ayam (1 bowl)", kcal:285, protein:13, carbs:35, fat:10},
-    {name:"Nasi Lemak + Ayam Goreng + Telur", kcal:620, protein:28, carbs:55, fat:32},
-    {name:"Roti Canai Kosong (1 pcs)", kcal:180, protein:4, carbs:22, fat:9},
-    {name:"Tosai + Dhal", kcal:220, protein:6, carbs:30, fat:8},
-    {name:"Overnight Oats + Protein", kcal:350, protein:25, carbs:45, fat:8},
+  "Main": [
+    {name:"Nasi Kerabu", kcal:420, protein:18, carbs:55, fat:14, variants:true, sizes:{S:{kcal:300,protein:13},M:{kcal:420,protein:18},L:{kcal:580,protein:24}}},
+    {name:"Nasi Lemak + Ayam", kcal:650, protein:28, carbs:70, fat:28, sizes:{S:{kcal:480,protein:20},M:{kcal:650,protein:28},L:{kcal:850,protein:35}}},
+    {name:"Nasi Ayam Penyet", kcal:680, protein:35, carbs:65, fat:30},
+    {name:"Nasi Goreng Kampung", kcal:520, protein:18, carbs:70, fat:18},
+    {name:"Mee Goreng Mamak", kcal:600, protein:20, carbs:75, fat:25},
+    {name:"Roti Canai (2pcs) + Dhal", kcal:400, protein:10, carbs:50, fat:18},
+    {name:"Chicken Chop", kcal:550, protein:35, carbs:30, fat:28},
+    {name:"Grilled Chicken Breast 200g", kcal:330, protein:62, carbs:0, fat:7},
+    {name:"Ikan Siakap Bakar", kcal:280, protein:32, carbs:2, fat:16},
+    {name:"Telur Goreng 2 biji", kcal:180, protein:12, carbs:1, fat:14}
   ],
-  Main: [
-    {name:"Nasi Kerabu + Daging Bakar + Telur Masin + Solok Lada + Ulam", kcal:775, protein:50, carbs:70, fat:28},
-    {name:"Nasi Kerabu + Ayam Bakar + Telur Masin + Solok Lada + Ulam", kcal:750, protein:50, carbs:68, fat:26},
-    {name:"Nasi Sup Perut Air Asam", kcal:500, protein:32, carbs:45, fat:18},
-    {name:"Nasi Ayam Goreng + Kuah Gulai (sikit)", kcal:610, protein:32, carbs:60, fat:22},
-    {name:"Nasi Budu + Ulam + Ikan Goreng", kcal:474, protein:26, carbs:50, fat:16},
-    {name:"Nasi Putih + Ayam Bakar Madu + Ulam", kcal:530, protein:38, carbs:55, fat:14},
-    {name:"Nasi Putih + Ikan Bakar + Ulam", kcal:470, protein:35, carbs:48, fat:12},
-    {name:"Nasi Goreng Kampung", kcal:550, protein:18, carbs:65, fat:20},
-    {name:"Chicken Rice (Nasi Ayam)", kcal:600, protein:30, carbs:65, fat:20},
+  "Protein": [
+    {name:"Whey Protein 1 scoop", kcal:120, protein:24, carbs:3, fat:1},
+    {name:"Telur Rebus 2 biji", kcal:140, protein:12, carbs:1, fat:10},
+    {name:"Ayam Dada 150g", kcal:250, protein:46, carbs:0, fat:5},
+    {name:"Tuna Can", kcal:180, protein:30, carbs:0, fat:5},
+    {name:"Greek Yogurt", kcal:100, protein:10, carbs:6, fat:0}
   ],
-  Protein: [
-    {name:"Chicken Breast", sizes:{S:{kcal:165, protein:31}, M:{kcal:275, protein:51}, L:{kcal:380, protein:70}}},
-    {name:"Salmon", sizes:{S:{kcal:180, protein:20}, M:{kcal:300, protein:34}, L:{kcal:410, protein:46}}},
-    {name:"Telur Mata (1 biji)", kcal:90, protein:6, carbs:1, fat:7},
-    {name:"Whey Protein + Water", kcal:120, protein:24, carbs:3, fat:1},
+  "Drinks": [
+    {name:"Teh Tarik", kcal:150, protein:2, carbs:18, fat:7},
+    {name:"Kopi O", kcal:20, protein:0, carbs:4, fat:0},
+    {name:"Milo Ais", kcal:200, protein:4, carbs:28, fat:8},
+    {name:"Air Kosong", kcal:0, protein:0, carbs:0, fat:0},
+    {name:"100 Plus", kcal:80, protein:0, carbs:20, fat:0}
   ],
-  Snack: [
-    {name:"Konjac Jelly - Watermelon (1 pack)", kcal:6, protein:0},
-    {name:"Telur Rebus (1 egg)", kcal:78, protein:6},
-    {name:"Buah Oren (1 medium ~130g)", kcal:62, protein:1},
-    {name:"Watermelon (1 slice ~150g)", kcal:46, protein:1},
-    {name:"Greek Yogurt Fernleaf (100g)", kcal:80, protein:6},
-  ],
-  Drink: [
-    {name:"Coke Zero (1 can)", kcal:0, protein:0},
-    {name:"Air Kosong", kcal:0, protein:0},
-    {name:"Teh O Kosong", kcal:2, protein:0},
-  ],
-  Condiment: [
-    {name:"Sambal Belacan (1 tbsp)", kcal:20, protein:1},
-    {name:"Budu (1 tbsp ~15g)", kcal:15, protein:1},
+  "Snacks": [
+    {name:"Pisang", kcal:90, protein:1, carbs:23, fat:0},
+    {name:"Kurma 3 biji", kcal:80, protein:0, carbs:20, fat:0},
+    {name:"Kacang Badam 20g", kcal:120, protein:4, carbs:2, fat:10},
+    {name:"Protein Bar", kcal:200, protein:20, carbs:15, fat:7}
   ]
 };
 const WORKOUT_TEMPLATES = {
-  "Push Day": [
-    {name:"Flat Bench Press (Smith Machine)", sets:3, reps:10, weight:0},
-    {name:"Incline Press (Machine)", sets:3, reps:10, weight:0},
-    {name:"Pec Deck Fly", sets:3, reps:10, weight:0},
-    {name:"Tricep Pushdown", sets:3, reps:10, weight:0},
-    {name:"Shoulder Press (Machine)", sets:3, reps:10, weight:0},
-    {name:"Lateral Raise (Dumbbell)", sets:3, reps:12, weight:0},
-  ],
-  "Pull Day": [
-    {name:"Lat Pulldown", sets:3, reps:10, weight:0},
-    {name:"Seated Row", sets:3, reps:10, weight:0},
-    {name:"Bicep Curl (Dumbbell)", sets:3, reps:12, weight:0},
-  ],
-  "Leg Day": [
-    {name:"Squat (Smith Machine)", sets:3, reps:10, weight:0},
-    {name:"Leg Press", sets:3, reps:10, weight:0},
-    {name:"Romanian Deadlift", sets:3, reps:10, weight:0},
-  ],
-  "Full Body": [
-    {name:"Squat", sets:3, reps:10, weight:0},
-    {name:"Bench Press", sets:3, reps:10, weight:0},
-  ]
+  "Push Day": [{name:"Bench Press",sets:4,reps:8,weight:60},{name:"Overhead Press",sets:3,reps:10,weight:30},{name:"Incline DB Press",sets:3,reps:12,weight:22},{name:"Lateral Raise",sets:3,reps:15,weight:8},{name:"Triceps Pushdown",sets:3,reps:12,weight:25}],
+  "Pull Day": [{name:"Deadlift",sets:4,reps:5,weight:80},{name:"Pull Up",sets:3,reps:8,weight:0},{name:"Barbell Row",sets:3,reps:10,weight:50},{name:"Face Pull",sets:3,reps:15,weight:20},{name:"Bicep Curl",sets:3,reps:12,weight:15}],
+  "Leg Day": [{name:"Squat",sets:4,reps:8,weight:70},{name:"Romanian Deadlift",sets:3,reps:10,weight:60},{name:"Leg Press",sets:3,reps:12,weight:120},{name:"Leg Curl",sets:3,reps:12,weight:40},{name:"Calf Raise",sets:4,reps:15,weight:30}],
+  "Full Body": [{name:"Squat",sets:3,reps:10,weight:60},{name:"Bench Press",sets:3,reps:10,weight:50},{name:"Row",sets:3,reps:10,weight:40},{name:"Plank",sets:3,reps:60,weight:0}],
+  "Cycling": [{name:"Cycling Outdoor",sets:1,reps:60,weight:0}],
+  "Running": [{name:"Running",sets:1,reps:30,weight:0}]
 };
