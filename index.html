@@ -7,6 +7,7 @@
   <title>Fitness AI Hub v4 Premium</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./styles.css">
+  <script src="https://js.puter.com/v2/"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.1/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -19,8 +20,8 @@
       <div class="notice">New tables: heart_rate_logs, steps_logs, sleep enhanced. Run supabase-schema-v4.sql first!</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
       <label>Publishable key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_..."></textarea></label>
-      <label>Groq Key (for AI coach)<input id="setupGroq" type="text" placeholder="gsk_..."></label>
-      <label>Gemini Key (for Food Photo)<input id="setupGemini" type="text" placeholder="AIzaSy..."></label>
+      <label>Puter AI (for AI coach)</label>
+      <label>Puter AI (for Food Photo)</label>
       <button class="btn primary" type="submit">Save and connect</button>
     </form>
   </section>
@@ -147,12 +148,39 @@
         <article class="panel"><h3>How to automate (still 0 cost)</h3><p class="muted">1. Garmin auto-sync to Strava (free in Garmin Connect > Settings > Third-party apps > Strava)<br>2. Zepp Life auto-sync weight to Google Fit (free)<br>3. Then export once a week - 2 clicks.<br><br>Premium tip: Use <b>Health Connect</b> on Android to aggregate Garmin+Zepp+Strava then export from there.</p></article>
       </section>
 
-      <section id="profileView" class="view">
-        <div class="panel" style="border:2px solid #5de8b6"><h3>🔗 Your Auto Sync URL - Ready for Health Auto Export (Lybron)</h3><div style="background:#0a1a2a;padding:12px;border-radius:10px;word-break:break-all;font-family:monospace;font-size:11px"><span id="finalUrl">https://edybozhpdaexeapywbeh.supabase.co/functions/v1/health-auto-export?user_id=e0c24919-3cec-466e-93e6-b9834e4d2011</span></div><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary small" onclick="navigator.clipboard.writeText(document.getElementById('finalUrl').textContent); toast('URL copied!')">📋 Copy URL</button></div><small class="muted">User ID: <code>e0c24919-3cec-466e-93e6-b9834e4d2011</code></small></div><h2 style="margin-top:20px">Profile v4</h2>
+      
+    <section id="profileView" class="view">
+        <div class="panel" style="border:2px solid #5de8b6;background:linear-gradient(145deg,#102c38,#122235)">
+          <h3>🔗 Your Auto Sync URL - Ready for Health Auto Export (Lybron)</h3>
+          <p class="muted small">Copy this and paste into Health Auto Export > Automations > REST API > URL</p>
+          <div style="background:#0a1a2a;padding:12px;border-radius:10px;word-break:break-all;font-family:monospace;font-size:11px;border:1px solid #1e324a">
+            <span id="finalUrl">https://edybozhpdaexeapywbeh.supabase.co/functions/v1/health-auto-export?user_id=e0c24919-3cec-466e-93e6-b9834e4d2011</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn primary small" onclick="navigator.clipboard.writeText(document.getElementById('finalUrl').textContent); toast('URL copied!')">📋 Copy Final URL</button>
+          </div>
+          <small class="muted" style="display:block;margin-top:10px">User ID: <code>e0c24919-3cec-466e-93e6-b9834e4d2011</code></small>
+        </div>
+
+        <h2 style="margin-top:20px">Profile</h2>
         <form id="profileForm" class="panel form-grid"></form>
-        <article class="panel"><h3>🤖 AI Keys (Free)</h3><label>Groq API Key gsk_...<input id="groqKeyInput" placeholder="gsk_..."></label><label style="margin-top:10px">Gemini API Key AIza...<input id="geminiKeyInput" placeholder="AIzaSy..."></label><div class="button-row" style="margin-top:14px"><button id="saveKeysBtn" class="btn primary" type="button">Save Keys</button><button id="testAIButton" class="btn ghost" type="button">Test AI</button></div><small id="keyStatus" class="muted" style="display:block;margin-top:10px"></small></article>
+
+        <article class="panel" style="border:2px solid #5de8b6;background:linear-gradient(145deg,#102c38,#122235)">
+          <h3>🤖 AI - PUTER ONLY (No API Keys Required)</h3>
+          <p class="muted" style="font-size:13px;line-height:1.5">Hardcoded with <code>https://js.puter.com/v2/</code><br>Text model: <code>google/gemini-2.5-flash-lite</code><br>Vision model: <code>google/gemini-2.5-flash</code> for food photos<br>No keys needed - unlimited free via Puter user-pays model.</p>
+          <div style="background:#0a1a2a;padding:10px;border-radius:10px;font-family:monospace;font-size:11px;border:1px solid #1e324a;margin-top:10px;word-break:break-all">
+            puter.ai.chat("Classify the following text as positive, negative, or neutral: 'The product works well but the delivery was late.'", {<br>&nbsp;&nbsp;model: 'google/gemini-2.5-flash-lite'<br>})
+          </div>
+          <div class="button-row" style="margin-top:14px">
+            <button id="testAIButton" class="btn primary" type="button">🤖 Test Puter AI - Run Your Example</button>
+          </div>
+          <small id="keyStatus" class="muted" style="display:block;margin-top:10px">✅ Ready - Puter hardcoded, no API keys</small>
+          <pre id="puterTestOutput" class="muted" style="margin-top:10px;white-space:pre-wrap;background:#0a1a2a;padding:12px;border-radius:8px;display:none;border:1px solid #1e324a;min-height:40px"></pre>
+        </article>
+
         <article class="panel"><h3>Data</h3><div class="button-row"><button id="exportButton" class="btn ghost" type="button">Export JSON</button><button id="deleteAccountData" class="btn danger" type="button">Delete health data</button></div></article>
       </section>
+
     </main>
 
     <nav class="bottom-nav six">

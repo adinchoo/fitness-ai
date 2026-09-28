@@ -35,7 +35,7 @@ $("#setupForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const url=$("#setupUrl").value.trim().replace(/\/$/,""), key=$("#setupKey").value.trim(), groq=$("#setupGroq")?.value.trim()||"", gemini=$("#setupGemini")?.value.trim()||"";
   if(!url.includes(".supabase.co") && !url.startsWith("https://")){ toast("Invalid URL",true); return }
-  localStorage.setItem(CONFIG_KEY, JSON.stringify({url,key,groqKey:groq,geminiKey:gemini}));
+  localStorage.setItem(CONFIG_KEY, JSON.stringify({url,key,puterKey:groq,puterKey:gemini}));
   location.reload();
 });
 $("#changeConnection").onclick=()=>{ if(confirm("Change Supabase connection?")){ localStorage.removeItem(CONFIG_KEY); location.reload() } };
@@ -146,23 +146,23 @@ function initUI(){
   $("#refreshButton").onclick=async()=>{ await loadRecords(); render(); toast("Refreshed") };
   $("#exportButton").onclick=exportJSON;
   const saveKeys=()=>{
-    const c=config()||{}; const groq=$("#groqKeyInput")?.value.trim()||""; const gemini=$("#geminiKeyInput")?.value.trim()||"";
+    const c=config()||{}; const groq=$("#puterKeyInput")?.value.trim()||""; const gemini=$("#puterKeyInput")?.value.trim()||"";
     if(gemini && !gemini.startsWith("AIza")){ toast("Gemini must start with AIza...",true); return; }
-    c.groqKey=groq; c.geminiKey=gemini; localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); toast("Keys saved"); $("#keyStatus").textContent="✅ Saved "+(groq?"Groq ":"")+(gemini?"Gemini":""); updateAIMode();
+    c.puterKey=groq; c.puterKey=gemini; localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); toast("Keys saved"); $("#keyStatus").textContent="✅ Saved "+(groq?"Groq ":"")+(gemini?"Gemini":""); updateAIMode();
   };
-  if($("#saveKeysBtn")) $("#saveKeysBtn").onclick=saveKeys;
-  if($("#groqKeyInput")) $("#groqKeyInput").value=config()?.groqKey||"";
-  if($("#geminiKeyInput")) $("#geminiKeyInput").value=config()?.geminiKey||"";
+  if(null) null.onclick=saveKeys;
+  if($("#puterKeyInput")) $("#puterKeyInput").value=config()?.puterKey||"";
+  if($("#puterKeyInput")) $("#puterKeyInput").value=config()?.puterKey||"";
   if($("#testAIButton")) $("#testAIButton").onclick=async()=>{
-    const c=config()||{}; if(!c.geminiKey && !c.groqKey){ toast("Add key",true); return; }
+    const c=config()||{}; if(!c.puterKey && !c.puterKey){ toast("Add key",true); return; }
     $("#keyStatus").textContent="Testing...";
     try{
-      if(c.geminiKey){
-        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Say ok"}]}]})});
+      if(c.puterKey){
+        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.puterKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Say ok"}]}]})});
         const data=await res.json(); if(data.error) throw new Error(data.error.message);
         $("#keyStatus").textContent="✅ Gemini works!"; toast("Gemini works");
       } else {
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+c.groqKey,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:"Say ok"}],max_tokens:10})});
+        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+c.puterKey,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:"Say ok"}],max_tokens:10})});
         const data=await res.json(); if(data.error) throw new Error(data.error.message);
         $("#keyStatus").textContent="✅ Groq works!"; toast("Groq works");
       }
@@ -188,8 +188,8 @@ function switchView(id){
   if(id==="activityView") renderActivity();
 }
 
-function updateAIMode(){
-  const c=config()||{}; const hasGroq=!!c.groqKey; const hasGemini=!!c.geminiKey;
+function updateAIMode(){ const pill=document.getElementById("aiModePill"); if(!pill) return; pill.textContent = (typeof puter !== "undefined") ? "Puter • Gemini 2.5 Flash" : "Local AI"; } function updateAIMode_old(){
+  const c=config()||{}; const hasGroq=!!c.puterKey; const hasGemini=!!c.puterKey;
   const pill=$("#aiModePill"); if(!pill) return;
   pill.textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
 }

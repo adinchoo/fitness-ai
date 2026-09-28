@@ -1,3 +1,1 @@
 https://edybozhpdaexeapywbeh.supabase.co/functions/v1/health-auto-export?user_id=e0c24919-3cec-466e-93e6-b9834e4d2011
-
-User ID: e0c24919-3cec-466e-93e6-b9834e4d2011
