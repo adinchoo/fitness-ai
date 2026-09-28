@@ -1,4 +1,4 @@
-// AI Engine v7.3.1 - PUTER ONLY - FIXED MODEL NAMES (no google/ prefix)
+// AI Engine v7.4 - GPX FULL + Puter
 const AI = {
   MODELS: {
     text: 'gemini-2.0-flash-lite',
@@ -22,7 +22,7 @@ const AI = {
   },
   async generateCheckin(profile, yesterday){
     if(this.isPuterReady()){
-      try{ return await this.puterCheckin(profile, yesterday); }catch(e){ console.warn("Puter checkin failed, fallback local", e.message); }
+      try{ return await this.puterCheckin(profile, yesterday); }catch(e){ console.warn("Puter checkin failed", e.message); }
     }
     return this.localCheckin(profile, yesterday);
   },
@@ -36,7 +36,6 @@ const AI = {
       const r = await puter.ai.chat(prompt, { model: this.MODELS.text });
       return this.extractText(r);
     }catch(e){
-      console.warn("Primary text model failed", e.message, "trying backup");
       const r = await puter.ai.chat(prompt, { model: this.MODELS.text_backup });
       return this.extractText(r);
     }
@@ -62,42 +61,63 @@ const AI = {
     try{ return JSON.parse(text); }catch{}
     let clean = text.replace(/```json/gi,'').replace(/```/g,'').trim();
     const matches = clean.match(/\{[\s\S]*?\}/g);
-    if(matches){
-      for(let m of matches.reverse()){
-        try{ return JSON.parse(m); }catch{}
-      }
-    }
+    if(matches){ for(let m of matches.reverse()){ try{ return JSON.parse(m); }catch{} } }
     return null;
   },
   async analyzeFoodPhoto(file){
     if(!this.isPuterReady()) return {error: "Puter not loaded. Refresh page and allow https://js.puter.com/v2/"};
-    const dataUrl = await new Promise((res, rej)=>{
-      const r = new FileReader();
-      r.onload = ()=> res(r.result);
-      r.onerror = rej;
-      r.readAsDataURL(file);
-    });
+    const dataUrl = await new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(file); });
     const prompt = `Nutrition expert. Analyze this food photo. Estimate dish name (English), calories, protein_g, carbs_g, fat_g. Return ONLY valid JSON: {"name":"Dish Name","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10} If not food, return {"error":"not_food"}`;
     const tryModels = [this.MODELS.vision, this.MODELS.vision_backup, 'gemini-2.5-flash-lite', 'gemini-3.1-flash-lite'];
     let lastErr="";
     for(let model of tryModels){
       try{
-        console.log("Trying food vision with", model);
         const response = await puter.ai.chat(prompt, dataUrl, { model });
         let text = this.extractText(response);
-        console.log("Vision response", model, text.slice(0,200));
         const json = this.extractJson(text);
         if(json && json.calories) return json;
         if(json && json.error) return json;
-        // if no JSON but text contains numbers, try to continue
         lastErr = text.slice(0,200);
-      }catch(e){
-        console.warn("Model", model, "failed", e.message);
-        lastErr = e.message;
-        if(e.message && e.message.includes("not found")) continue;
-      }
+      }catch(e){ lastErr = e.message; if(e.message && e.message.includes("not found")) continue; }
     }
     return {error: "Food photo failed, last: " + lastErr};
+  },
+  // NEW: GPX / FIT DEEP ANALYSIS
+  async analyzeGpxFitReport(profile, data){
+    if(!this.isPuterReady()) return "❌ Puter not loaded. Open via https and allow https://js.puter.com/v2/ script";
+    const s=data.stats;
+    const samplePoints = data.points.slice(0,30).map((p,i)=>({i, d:((p.cumDist||p.distance||0)/1000).toFixed(2)+'km', ele:Math.round(p.ele||p.altitude||0), hr:p.hr||0, spd:(p.speed||0).toFixed(1), pow:p.power||0, cad:p.cadence||0})).slice(0,20);
+    const splitsStr = data.splits.slice(0,12).map(sp=>`KM${sp.km}: ${Math.floor(sp.durationSec/60)}:${String(Math.round(sp.durationSec%60)).padStart(2,'0')} HR${sp.avgHr||'--'} +${Math.round(sp.elevGain)}m`).join(' | ');
+    const prompt = `You are elite endurance coach & sports scientist for ${profile.full_name||'athlete'}, goal ${profile.primary_goal||'improve_fitness'}.
+Analyze this ${data.type} file in extreme detail:
+
+File: ${data.fileName}
+Sport: ${data.sport} | Distance: ${s.totalDistKm.toFixed(3)}km (${s.totalDistM.toFixed(0)}m) | Duration: ${Math.floor(s.totalTimeSec/60)}m ${Math.round(s.totalTimeSec%60)}s | Elev Gain ${Math.round(s.elevGain)}m Loss ${Math.round(s.elevLoss)}m (min ${Math.round(s.minEle)} max ${Math.round(s.maxEle)})
+Speed: avg ${s.avgSpeedKmh.toFixed(1)}km/h max ${s.maxSpeedKmh.toFixed(1)} | HR avg ${s.avgHr||0} max ${s.maxHr||0} | Power avg ${s.avgPower||0}W max ${s.maxPower||0}W | Cad avg ${s.avgCad||0} max ${s.maxCad||0} | Points ${s.pointCount} Laps ${s.lapCount}
+Splits: ${splitsStr}
+Sample trackpoints: ${JSON.stringify(samplePoints)}
+
+Provide 6 sections with emoji, English, max 350 words:
+1. Overview & Effort Score
+2. Pace / Speed Analysis & Variability
+3. Heart Rate Zones & Cardiovascular Load
+4. Elevation / Terrain Impact
+5. Efficiency: Cadence, Power, Form
+6. 3 Actionable Improvements for next same route
+
+Be specific to numbers, no generic advice.`;
+
+    const tryModels=[this.MODELS.report, this.MODELS.report_backup, 'gemini-2.0-flash', 'gemini-2.5-flash'];
+    let lastErr='';
+    for(let m of tryModels){
+      try{
+        const r=await puter.ai.chat(prompt,{model:m});
+        const txt=this.extractText(r);
+        if(txt && txt.length>20) return txt;
+        lastErr=txt.slice(0,100);
+      }catch(e){ lastErr=e.message; console.warn('AI gpx model',m,'failed',e.message); }
+    }
+    return "AI failed: "+lastErr;
   },
   async testPuter(){
     if(!this.isPuterReady()) throw new Error("Puter not ready - check internet and https://js.puter.com/v2/ loaded");
@@ -107,10 +127,7 @@ const AI = {
       try{
         const response = await puter.ai.chat("Say OK if you work", { model: m });
         return `✅ ${m} works:\n${this.extractText(response)}`;
-      }catch(e){
-        lastErr = e.message;
-        console.warn(m, "failed", e.message);
-      }
+      }catch(e){ lastErr = e.message; }
     }
     throw new Error("All models failed. Last: " + lastErr);
   }

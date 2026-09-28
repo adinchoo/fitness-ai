@@ -2,10 +2,7 @@ const Health = {
   recoveryScore({sleepHours=0, restingHR=60, avgHR=0, stepsYesterday=0, workoutCount=0}){
     let score=50;
     if(sleepHours>=7.5) score+=20; else if(sleepHours>=6) score+=10; else if(sleepHours<5) score-=15;
-    if(restingHR && avgHR){
-      const diff = avgHR - restingHR;
-      if(diff<10) score+=10; else if(diff>30) score-=10;
-    }
+    if(restingHR && avgHR){ const diff = avgHR - restingHR; if(diff<10) score+=10; else if(diff>30) score-=10; }
     if(stepsYesterday>10000) score+=10;
     if(workoutCount>1) score-=10;
     return Math.max(10, Math.min(95, Math.round(score)));
@@ -24,7 +21,7 @@ const Health = {
   },
   weeklyTrend(weights){
     if(weights.length<3) return 0;
-    const n=weights.length; const first=weights.slice(0,3).reduce((a,b)=>a+b,0)/3; const last=weights.slice(-3).reduce((a,b)=>a+b,0)/3;
+    const first=weights.slice(0,3).reduce((a,b)=>a+b,0)/3; const last=weights.slice(-3).reduce((a,b)=>a+b,0)/3;
     return Number((last-first).toFixed(2));
   }
 };

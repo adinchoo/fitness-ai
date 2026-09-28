@@ -178,6 +178,18 @@ function initUI(){
   $("#sleepForm") && ($("#sleepForm").onsubmit=saveSleep);
   $("#stepsForm") && ($("#stepsForm").onsubmit=saveSteps);
   $("#hrForm") && ($("#hrForm").onsubmit=saveHR);
+
+  // === GPX FULL REPORT v7.4 ===
+  const gpxReportInput = document.getElementById('gpxReportFile');
+  if(gpxReportInput){
+    gpxReportInput.onchange=e=>{ const f=e.target.files[0]; if(f){ GpxReport.loadFile(f).then(()=>{ switchView('gpxReportView'); toast('GPX/FIT full report loaded: '+f.name); }).catch(err=>toast(err.message,true)); } };
+    const dropZone=document.getElementById('gpxDropZone');
+    if(dropZone){
+      dropZone.ondragover=e=>{ e.preventDefault(); dropZone.style.background='#102c38'; dropZone.style.borderColor='#c6ff00'; };
+      dropZone.ondragleave=()=>{ dropZone.style.background=''; dropZone.style.borderColor=''; };
+      dropZone.ondrop=e=>{ e.preventDefault(); dropZone.style.background=''; const f=e.dataTransfer.files[0]; if(f){ GpxReport.loadFile(f).then(()=>{ switchView('gpxReportView'); toast('GPX/FIT full report loaded: '+f.name); }).catch(err=>toast(err.message,true)); } };
+    }
+  }
 }
 function switchView(id){
   $$('[data-view]').forEach(x=>x.classList.toggle("active",x.dataset.view===id));
@@ -187,6 +199,7 @@ function switchView(id){
   if(id==="photosView") renderPhotos();
   if(id==="reportView") renderLast7();
   if(id==="activityView") renderActivity();
+  if(id==="gpxReportView" && window.GpxReport && GpxReport.data){ setTimeout(()=>{ GpxReport.drawMap(); }, 200); }
 }
 function updateAIMode(){
   const pill=document.getElementById("aiModePill"); if(!pill) return;
@@ -305,8 +318,8 @@ async function saveMeal(e){
 }
 async function saveBody(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, weight_kg:parseFloat(fd.get('weight_kg')), body_fat_percent: fd.get('body_fat')? parseFloat(fd.get('body_fat')):null, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString() : new Date().toISOString()}; const {error}=await db.from('body_logs').insert(row); if(error) return toast(error.message,true); $("#bodyDialog").close(); await loadRecords(); render(); toast("Weight logged"); }
 async function saveQuickWorkout(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const {error}=await db.from('activity_logs').insert({user_id:user.id, activity_name:fd.get('activity_name'), duration_minutes:+fd.get('duration_minutes'), calories_burned:+fd.get('calories_burned')||0, distance_km: parseFloat(fd.get('distance_km'))||0, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString(): new Date().toISOString()}); if(error) return toast(error.message,true); $("#workoutDialog").close(); await loadRecords(); render(); toast("Workout logged"); }
-async function saveSleep(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, duration_hours:parseFloat(fd.get('duration_hours')), quality:+fd.get('quality')||3, deep_minutes:+fd.get('deep_minutes')||0, light_minutes:+fd.get('light_minutes')||0, rem_minutes:+fd.get('rem_minutes')||0, awake_minutes:+fd.get('awake_minutes')||0, score:+fd.get('score')||0, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString(): new Date().toISOString()}; const {error}=await db.from('sleep_logs').insert(row); if(error) return toast(error.message,true); $("#sleepDialog").close(); await loadRecords(); render(); toast("Sleep logged"); }
-async function saveSteps(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, steps:+fd.get('steps'), distance_km:parseFloat(fd.get('distance_km'))||0, calories_burned:+fd.get('calories_burned')||0, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString(): new Date().toISOString()}; const {error}=await db.from('steps_logs').insert(row); if(error) return toast(error.message,true); $("#stepsDialog").close(); await loadRecords(); render(); toast("Steps logged"); }
+async function saveSleep(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, duration_hours:parseFloat(fd.get('duration_hours')), quality:+fd.get('quality')||3, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString(): new Date().toISOString()}; const {error}=await db.from('sleep_logs').insert(row); if(error) return toast(error.message,true); $("#sleepDialog").close(); await loadRecords(); render(); toast("Sleep logged"); }
+async function saveSteps(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, steps:+fd.get('steps'), distance_km:parseFloat(fd.get('distance_km'))||0, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString(): new Date().toISOString()}; const {error}=await db.from('steps_logs').insert(row); if(error) return toast(error.message,true); $("#stepsDialog").close(); await loadRecords(); render(); toast("Steps logged"); }
 async function saveHR(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, bpm:+fd.get('bpm'), resting_bpm:+fd.get('resting_bpm')||null, avg_bpm:+fd.get('avg_bpm')||+fd.get('bpm'), source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString(): new Date().toISOString()}; const {error}=await db.from('heart_rate_logs').insert(row); if(error) return toast(error.message,true); $("#hrDialog").close(); await loadRecords(); render(); toast("HR logged"); }
 function renderWorkoutEditor(){
   const sel=$("#workoutTemplateSelect"); if(!sel) return;
@@ -324,8 +337,7 @@ async function saveWorkout(){
 }
 async function handleFoodPhoto(file){
   if(!file) return;
-  const previewBox = $("#foodPreviewBox"); const previewImg = $("#foodPreviewImg"); const status = $("#foodPhotoStatus");
-  if(previewImg){ previewImg.src = URL.createObjectURL(file); if(previewBox) previewBox.style.display = "block"; }
+  const status = $("#foodPhotoStatus");
   if(status) status.textContent = "🔍 Analyzing with Puter AI...";
   toast("Analyzing meal photo...");
   const res = await AI.analyzeFoodPhoto(file);
@@ -374,7 +386,6 @@ function drawRings(){
   rings.forEach((r,i)=>{ const radius = 50 - i*14; const start = -Math.PI/2; const end = start + r.value*2*Math.PI; ctx.strokeStyle="#1e324a"; ctx.lineWidth=10; ctx.beginPath(); ctx.arc(cx,cy,radius,start,start+2*Math.PI); ctx.stroke(); ctx.strokeStyle=r.color; ctx.lineWidth=10; ctx.lineCap='round'; ctx.beginPath(); ctx.arc(cx,cy,radius,start,end); ctx.stroke(); ctx.fillStyle=r.color; ctx.font="10px Inter"; ctx.fillText(`${r.label} ${Math.round(r.value*100)}%`, cx+60, cy-30 + i*18); });
 }
 function renderActivity(){
-  const t=getLast7Data();
   const last14Steps={}; for(let i=13;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); last14Steps[dayStr(d)]=0; }
   records.steps.forEach(s=>{ const d=dayStr(s.logged_at); if(last14Steps[d]!==undefined) last14Steps[d]+=s.steps; });
   drawBar('stepsChart', last14Steps, profile.target_steps||10000);
@@ -389,13 +400,6 @@ function renderActivity(){
 function renderLast7(){
   const d=getLast7Data(); const el=$("#last7Summary"); if(!el) return;
   el.innerHTML=`<div class="row"><div>Meals</div><span>${d.meals.length} items</span></div><div class="row"><div>Avg kcal</div><span>${d.meals.length?Math.round(d.totalCal/7):0} kcal</span></div><div class="row"><div>Workouts</div><span>${d.workoutCount}</span></div><div class="row"><div>Steps avg</div><span>${d.steps.length? Math.round(d.steps.reduce((s,x)=>s+x.steps,0)/7).toLocaleString():0}</span></div>`;
-  if(document.getElementById("reportWeightChart")){
-    let wts = d.last7Dates.map(date=>d.dailyWeight[date]||null).filter(v=>v!==null);
-    let lbs = d.last7Dates.filter(date=>d.dailyWeight[date]).map(date=>date.slice(5));
-    if(wts.length<2){ const sorted=[...records.body].sort((a,b)=>new Date(a.logged_at)-new Date(b.logged_at)).slice(-7); wts=sorted.map(b=>b.weight_kg); lbs=sorted.map(b=>dayStr(b.logged_at).slice(5)); }
-    if(wts.length) drawWeightChart("reportWeightChart", wts, lbs, profile.target_weight_kg);
-  }
-  if(document.getElementById("reportCalChart")) drawBar("reportCalChart", d.dailyCal, profile.target_calories);
 }
 async function generateReport(){
   const btn=$("#genReportBtn"); if(btn){ btn.disabled=true; btn.textContent="Generating..."; }
@@ -407,13 +411,10 @@ function renderHistory(){
   const sorted=[...records.body].sort((a,b)=>new Date(a.logged_at)-new Date(b.logged_at));
   const weights=sorted.map(b=>b.weight_kg); const labels=sorted.map(b=>dayStr(b.logged_at).slice(5));
   drawWeightChart("weightChart", weights, labels, profile.target_weight_kg);
-  const first=sorted[0]?.weight_kg||0; const last=sorted[sorted.length-1]?.weight_kg||0;
-  if($("#hStart")) $("#hStart").textContent=(first||"--")+" kg";
-  if($("#hNow")) $("#hNow").textContent=(last||"--")+" kg";
   if($("#allLogs")){
-    $("#allLogs").innerHTML=[...records.meals,...records.workoutSessions,...records.body,...records.steps,...records.sleep].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at)).slice(0,40).map(x=>{
-      const name=x.meal_name||x.session_name||(x.steps? `${x.steps} steps` : null)||(x.duration_hours? `${x.duration_hours}h sleep`: null)||`Weight ${x.weight_kg}kg`;
-      return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleString()}</small></div><span>${x.calories?x.calories+' kcal':''}</span></div>`;
+    $("#allLogs").innerHTML=[...records.meals,...records.workoutSessions,...records.body].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at)).slice(0,40).map(x=>{
+      const name=x.meal_name||x.session_name||`Weight ${x.weight_kg}kg`;
+      return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleString()}</small></div></div>`;
     }).join("") || '<div class="empty">No logs</div>';
   }
 }
@@ -428,18 +429,16 @@ function buildProfileForm(){
     <label>Protein target<input name="target_protein_g" type="number" value="${profile.target_protein_g}" required></label>
     <label>Steps target<input name="target_steps" type="number" value="${profile.target_steps||10000}"></label>
     <label>Sleep target h<input name="target_sleep_hours" type="number" step="0.1" value="${profile.target_sleep_hours||7.5}"></label>
-    <label>Resting HR<input name="resting_hr" type="number" value="${profile.resting_hr||60}"></label>
-    <label class="full">Allergies<input name="allergies" value="${esc(profile.allergies||'')}"></label>
     <button class="btn primary full" type="submit">Save profile</button>
   `;
   f.onsubmit=async e=>{
     e.preventDefault(); const fd=new FormData(f);
-    const row={full_name:fd.get("full_name"), date_of_birth:fd.get("date_of_birth"), height_cm:+fd.get("height_cm"), target_weight_kg:+fd.get("target_weight_kg"), target_calories:+fd.get("target_calories"), target_protein_g:+fd.get("target_protein_g"), target_steps:+fd.get("target_steps")||10000, target_sleep_hours:+fd.get("target_sleep_hours")||7.5, resting_hr:+fd.get("resting_hr")||60, allergies:fd.get("allergies")};
+    const row={full_name:fd.get("full_name"), date_of_birth:fd.get("date_of_birth"), height_cm:+fd.get("height_cm"), target_weight_kg:+fd.get("target_weight_kg"), target_calories:+fd.get("target_calories"), target_protein_g:+fd.get("target_protein_g"), target_steps:+fd.get("target_steps")||10000, target_sleep_hours:+fd.get("target_sleep_hours")||7.5};
     const {data,error}=await db.from("profiles").update(row).eq("id",user.id).select().single();
     if(error) return toast(error.message,true); profile=data; toast("Profile updated"); render();
   };
 }
-function exportJSON(){ const blob=new Blob([JSON.stringify({profile, records},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`fitness-v7.3-export-${todayStr()}.json`; a.click(); }
+function exportJSON(){ const blob=new Blob([JSON.stringify({profile, records},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`fitness-v7.4-export-${todayStr()}.json`; a.click(); }
 $("#deleteAccountData") && ($("#deleteAccountData").onclick=async()=>{
   if(!confirm("Delete all health records?")) return;
   for(const t of ["meal_logs","activity_logs","body_logs","workout_sessions","water_logs","sleep_logs","steps_logs","heart_rate_logs"]){ await db.from(t).delete().eq("user_id",user.id); }
@@ -448,6 +447,7 @@ $("#deleteAccountData") && ($("#deleteAccountData").onclick=async()=>{
 window.handleGarminImport = async(fileOverride)=>{
   const file=fileOverride || $("#garminFile")?.files[0]; if(!file) return toast("Select file",true);
   if(file.name.toLowerCase().endsWith('.fit')) return handleFitImport(file);
+  if(file.name.toLowerCase().endsWith('.gpx')) return handleGpxImport(file);
   $("#garminStatus").textContent="Parsing Garmin...";
   try{
     const data=await Integrations.importGarmin(file);
@@ -479,8 +479,10 @@ window.handleFitImport = async(fileOverride)=>{
   const file = fileOverride || document.getElementById("fitFile")?.files[0] || document.getElementById("quickImportFile")?.files[0];
   if(!file) return toast("Select .fit file",true);
   const statusEl = document.getElementById("fitStatus") || document.getElementById("quickImportStatus") || document.getElementById("garminStatus");
-  if(statusEl) statusEl.textContent = "Parsing FIT...";
+  if(statusEl) statusEl.textContent = "Parsing FIT FULL...";
   try{
+    // NEW: Show full report immediately
+    if(window.GpxReport){ try{ await GpxReport.loadFile(file); switchView('gpxReportView'); }catch(e){ console.warn("GPX report load failed",e); } }
     const activities = await Integrations.importFit(file);
     if(!activities.length) throw new Error("No sessions in FIT");
     let inserted=0;
@@ -490,8 +492,8 @@ window.handleFitImport = async(fileOverride)=>{
       inserted++;
     }
     await db.from('integration_imports').insert({user_id:user.id, provider:'fit', file_name:file.name, records_count:inserted});
-    if(statusEl) statusEl.textContent = `✅ Imported ${inserted} FIT: ${activities.map(a=>`${a.activity_name} ${a.distance_km}km ${a.duration_minutes}min`).join(' | ')}`;
-    await loadRecords(); render(); toast(`FIT imported ${inserted}`);
+    if(statusEl) statusEl.textContent = `✅ Imported ${inserted} FIT FULL: ${activities.map(a=>`${a.activity_name} ${a.distance_km}km ${a.duration_minutes}min`).join(' | ')} - Check GPX Report tab for full data`;
+    await loadRecords(); render(); toast(`FIT FULL imported ${inserted} + full report shown`);
   }catch(e){ console.error(e); if(statusEl) statusEl.textContent = "❌ "+e.message; toast(e.message,true); }
 };
 window.handleQuickImport = async()=>{
@@ -506,5 +508,22 @@ window.handleQuickImport = async()=>{
   }catch(e){ if(st) st.textContent="❌ "+e.message; }
 };
 boot();
-
-window.handleGpxImport = async(fileOverride)=>{ const file=fileOverride||document.getElementById('gpxFile')?.files[0]||document.getElementById('fitFile')?.files[0]||document.getElementById('quickImportFile')?.files[0]; if(!file) return toast('Select .gpx',true); const el=document.getElementById('gpxStatus')||document.getElementById('fitStatus'); if(el) el.textContent=`Parsing GPX ${file.name}...`; try{ const acts=await Integrations.importGpx(file); let ins=0; for(let a of acts){ await db.from('activity_logs').insert({user_id:user.id, activity_name:a.activity_name, duration_minutes:a.duration_minutes, distance_km:a.distance_km, calories_burned:a.calories_burned||0, source:'GPX', logged_at:new Date(a.logged_at).toISOString()}); if(a.avg_hr) await db.from('heart_rate_logs').insert({user_id:user.id, bpm:a.avg_hr, avg_bpm:a.avg_hr, max_bpm:a.max_hr||null, source:'GPX', logged_at:new Date(a.logged_at).toISOString()}); ins++; } if(el) el.textContent=`✅ Imported ${ins} GPX: ${acts.map(a=>`${a.activity_name} ${a.distance_km}km`).join(' | ')}`; await loadRecords(); render(); toast(`GPX imported ${ins}`);}catch(e){ if(el) el.textContent='❌ '+e.message; toast(e.message,true);} };
+window.handleGpxImport = async(fileOverride)=>{
+  const file=fileOverride||document.getElementById('gpxFile')?.files[0]||document.getElementById('fitFile')?.files[0]||document.getElementById('quickImportFile')?.files[0];
+  if(!file) return toast('Select .gpx',true);
+  const el=document.getElementById('gpxStatus')||document.getElementById('fitStatus')||document.getElementById('quickImportStatus');
+  if(el) el.textContent=`Parsing GPX FULL ${file.name}...`;
+  try{
+    // NEW: Show full report immediately with ALL data
+    if(window.GpxReport){ try{ await GpxReport.loadFile(file); switchView('gpxReportView'); }catch(e){ console.warn("GPX report load",e); } }
+    const acts=await Integrations.importGpx(file);
+    let ins=0;
+    for(let a of acts){
+      await db.from('activity_logs').insert({user_id:user.id, activity_name:a.activity_name, duration_minutes:a.duration_minutes, distance_km:a.distance_km, calories_burned:a.calories_burned||0, source:'GPX', logged_at:new Date(a.logged_at).toISOString()});
+      if(a.avg_hr) await db.from('heart_rate_logs').insert({user_id:user.id, bpm:a.avg_hr, avg_bpm:a.avg_hr, max_bpm:a.max_hr||null, source:'GPX', logged_at:new Date(a.logged_at).toISOString()});
+      ins++;
+    }
+    if(el) el.textContent=`✅ Imported ${ins} GPX FULL: ${acts.map(a=>`${a.activity_name} ${a.distance_km}km`).join(' | ')} - Full report in GPX Report tab`;
+    await loadRecords(); render(); toast(`GPX FULL imported ${ins} + full report`);
+  }catch(e){ if(el) el.textContent='❌ '+e.message; toast(e.message,true); }
+};

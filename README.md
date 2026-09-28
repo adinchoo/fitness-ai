@@ -1,17 +1,7 @@
-# Fitness AI Hub v7.3 FULL - Meal Camera + FIT
+# Fitness AI Hub v7.4 GPX FULL
 
-Fixed package. All duplicates removed.
-
-Features:
-- Log Meal: big TAKE PHOTO button -> capture="environment" -> Puter Vision gemini-2.0-flash auto kcal/protein
-- FIT: import .fit from Garmin/Wahoo/Zwift/Coros - parsed locally, no server
-- Models fixed to google/gemini-2.0-flash-lite / flash
-
-Deploy:
-1. Supabase SQL Editor -> run supabase/schema.sql
-2. Edge Functions -> health-auto-export -> paste supabase/functions/health-auto-export/index.ts -> set env SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY -> deploy --no-verify-jwt
-3. Host folder
-
-Use:
-- Home > Log Meal > TAKE PHOTO
-- Sync > FIT File > choose .fit
+NEW:
+- GPX Report view with FULL data: lat/lon/ele/time/hr/cad/power/temp
+- FIT FULL: semicircles deg, alt/5-500, dist/100, speed/1000->kmh, hr, cad, power, temp
+- Leaflet map, elevation/HR/speed/power charts, splits per km, points table, export JSON
+- AI Analyze ALL data via Puter Gemini
