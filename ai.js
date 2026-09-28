@@ -1,12 +1,17 @@
 
-// AI Engine v4 - Premium - 100% English
-const AI = {
-  getConfig(){ try{return JSON.parse(localStorage.getItem('fitness-ai-supabase-config')||'{}')}catch{return{}} },
+// AI Engine v5 - Hardcoded with Puter.js - 100% Free, No API Keys, Fully English
+// Uses puter.ai.chat with Gemini models via https://js.puter.com/v2/
+// Models: google/gemini-2.5-flash-lite for text, google/gemini-2.5-flash for vision
 
+const AI = {
+  // Check if Puter is loaded
+  isPuterReady(){ return typeof puter !== 'undefined' && puter.ai && puter.ai.chat; },
+
+  // --- Main entry: Yesterday check-in ---
   async generateCheckin(profile, yesterday){
-    const cfg = this.getConfig();
-    if(cfg.groqKey){ try{ return await this.groqCheckin(profile, yesterday); }catch(e){ console.warn(e) } }
-    if(cfg.geminiKey){ try{ return await this.geminiCheckin(profile, yesterday); }catch(e){ console.warn(e) } }
+    if(this.isPuterReady()){
+      try{ return await this.puterCheckin(profile, yesterday); }catch(e){ console.warn("Puter checkin failed, fallback to local", e); }
+    }
     return this.localCheckin(profile, yesterday);
   },
 
@@ -22,41 +27,41 @@ const AI = {
     const calDiff = y.targetCal - y.calories;
     const proDiff = y.targetPro - y.protein;
     if(calDiff>150) parts.push(`You were ${calDiff} kcal under target`);
-    if(proDiff>15) parts.push(`Protein short by ${proDiff}g - add a chicken breast or shake today`);
-    if(y.calories>=y.targetCal*0.9 && y.protein>=y.targetPro*0.9) parts.push(`Nutrition was on point - great job!`);
-    if(!y.sleepHours || y.sleepHours<6) parts.push(`Aim for 7.5h sleep tonight for better recovery`);
+    if(proDiff>15) parts.push(`Protein short by ${proDiff}g - add chicken or shake today`);
+    if(y.calories>=y.targetCal*0.9 && y.protein>=y.targetPro*0.9) parts.push(`Nutrition was on point!`);
+    if(!y.sleepHours || y.sleepHours<6) parts.push(`Aim for 7.5h sleep tonight`);
     if(y.recovery) parts.push(`Recovery ${y.recovery}% - ${y.readiness?.label}`);
-    return parts.join(' • ') + '. Keep the momentum going today!';
+    return parts.join(' • ') + '. Keep the momentum going!';
   },
 
-  async groqCheckin(profile, y){
-    const cfg = this.getConfig();
-    const prompt = `You are an English fitness coach for ${profile.full_name}, goal ${profile.primary_goal}. Yesterday: calories ${y.calories}/${y.targetCal}, protein ${y.protein}/${y.targetPro}g, steps ${y.steps||0}/${profile.target_steps||10000}, sleep ${y.sleepHours||0}h score ${y.sleepScore||0}, avg HR ${y.avgHR||0}, workouts ${y.workoutCount}, recovery ${y.recovery||50}%. Write a short encouraging check-in under 60 words in 100% English with emoji. No Malay.`;
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
-      body: JSON.stringify({model:"llama-3.1-8b-instant", messages:[{role:"user", content:prompt}], max_tokens:150})
+  // Hardcoded Puter text generation - model from your example adapted
+  async puterCheckin(profile, y){
+    const prompt = `You are an English fitness coach for ${profile.full_name}, goal ${profile.primary_goal}. 
+Yesterday: calories ${y.calories}/${y.targetCal}, protein ${y.protein}/${y.targetPro}g, steps ${y.steps||0}/${profile.target_steps||10000}, sleep ${y.sleepHours||0}h score ${y.sleepScore||0}, avg HR ${y.avgHR||0}, workouts ${y.workoutCount}, recovery ${y.recovery||50}%.
+Write a short check-in under 60 words in 100% English with emoji. Encouraging and friendly. No Malay.`;
+
+    // Using model from your snippet - gemini-3.5-flash-lite via Puter
+    // Puter supports both short name and full: 'gemini-3.5-flash-lite' or 'google/gemini-2.5-flash-lite'
+    // We use google/gemini-2.5-flash-lite for best free performance
+    const response = await puter.ai.chat(prompt, {
+      model: 'google/gemini-2.5-flash-lite'
     });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || this.localCheckin(profile,y);
-  },
-  async geminiCheckin(profile, y){
-    const cfg = this.getConfig();
-    const prompt = `English fitness coach only. ${profile.full_name} yesterday: ${y.calories}/${y.targetCal} kcal, ${y.protein}/${y.targetPro}g, steps ${y.steps||0}, sleep ${y.sleepHours||0}h, HR ${y.avgHR||0}. Under 60 words, English only, encouraging.`;
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-    });
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || this.localCheckin(profile,y);
+    
+    // Puter returns string or object with message
+    if(typeof response === 'string') return response;
+    if(response.message?.content) return response.message.content;
+    if(response.text) return response.text;
+    return response.toString();
   },
 
+  // --- Weekly Report ---
   async generateWeeklyReport(profile, last7){
-    const cfg = this.getConfig();
-    if(cfg.groqKey){ try{ return await this.groqWeekly(profile, last7); }catch{} }
-    if(cfg.geminiKey){ try{ return await this.geminiWeekly(profile, last7); }catch{} }
+    if(this.isPuterReady()){
+      try{ return await this.puterWeekly(profile, last7); }catch(e){ console.warn(e); }
+    }
     return this.localWeekly(profile, last7);
   },
+
   localWeekly(profile, last7){
     const startW = last7.bodyLogs.length>=2? last7.bodyLogs[last7.bodyLogs.length-1].weight_kg : profile.starting_weight_kg || 0;
     const nowW = last7.bodyLogs.length? last7.bodyLogs[0].weight_kg : startW;
@@ -74,30 +79,25 @@ Activity: ${avgSteps.toLocaleString()} steps/day, ${last7.workoutCount} workouts
 Sleep: ${avgSleep}h average, Recovery ${last7.avgRecovery||50}%
 Heart: ${avgHR? avgHR+' bpm average, estimated VO2max '+Health.estimateVO2Max(profile.resting_hr||60, 30, profile.sex_at_birth):'No heart rate data'}
 
-Focus for next week: ${avgSleep<7?'Prioritize 7.5h sleep. ':''}${avgPro<profile.target_protein_g*0.8?'Increase protein intake. ':''}${avgSteps<8000?'Aim for 10k steps daily.':''}`.trim();
-  },
-  async groqWeekly(profile, last7){
-    const cfg = this.getConfig();
-    const prompt = `Premium fitness coach, English only. Profile ${JSON.stringify({name:profile.full_name, goal:profile.primary_goal, target:profile.target_weight_kg})}. Last 7 days: ${JSON.stringify({cal:last7.totalCal, pro:last7.totalPro, workouts:last7.workoutCount, steps:last7.steps.reduce((s,x)=>s+x.steps,0), sleep:last7.sleep.length, avgHR:last7.hr[0]?.bpm, weightChange:last7.weightChange})}. Write report with 5 sections: Weight, Nutrition, Activity & Steps, Sleep & Recovery, Heart Rate & VO2max, What to Improve. English only, max 250 words with emoji.`;
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{"Authorization":"Bearer "+cfg.groqKey,"Content-Type":"application/json"},
-      body: JSON.stringify({model:"llama-3.1-8b-instant", messages:[{role:"user", content:prompt}], max_tokens:500})
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || this.localWeekly(profile, last7);
-  },
-  async geminiWeekly(profile, last7){
-    const cfg = this.getConfig();
-    const prompt = `Weekly fitness report English only with 5 sections Weight/Nutrition/Activity/Sleep/Heart. Data ${JSON.stringify({totalCal:last7.totalCal, workoutCount:last7.workoutCount, steps:last7.steps.length})}. Max 250 words English.`;
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-    });
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || this.localWeekly(profile, last7);
+Focus next week: ${avgSleep<7?'Prioritize 7.5h sleep. ':''}${avgPro<profile.target_protein_g*0.8?'Increase protein. ':''}${avgSteps<8000?'Walk 10k daily.':''}`.trim();
   },
 
+  async puterWeekly(profile, last7){
+    const prompt = `Premium English fitness coach. Profile: ${profile.full_name}, goal ${profile.primary_goal}, target weight ${profile.target_weight_kg}kg.
+Last 7 days: calories ${last7.totalCal}, protein ${last7.totalPro}g, workouts ${last7.workoutCount}, steps total ${last7.steps.reduce((s,x)=>s+x.steps,0)}, sleep logs ${last7.sleep.length}, avg HR ${last7.hr[0]?.bpm||'no data'}, weight change ${last7.weightChange}kg.
+
+Write a weekly report with 5 sections: Weight, Nutrition, Activity & Steps, Sleep & Recovery, Heart Rate & VO2max, What to Improve.
+Use 100% English, casual friendly, include emoji, max 250 words.`;
+
+    const response = await puter.ai.chat(prompt, {
+      model: 'google/gemini-2.5-flash'
+    });
+    if(typeof response === 'string') return response;
+    if(response.message?.content) return response.message.content;
+    return response.toString();
+  },
+
+  // --- JSON extractor ---
   extractJson(text){
     if(!text) return null;
     try{ return JSON.parse(text); }catch{}
@@ -111,36 +111,65 @@ Focus for next week: ${avgSleep<7?'Prioritize 7.5h sleep. ':''}${avgPro<profile.
     return null;
   },
 
+  // --- FOOD PHOTO AI - Hardcoded with Puter Vision ---
+  // Example you gave: puter.ai.chat("Classify...", {model:'gemini-3.5-flash-lite'})
+  // For vision: puter.ai.chat(prompt, imageUrl, {model: 'google/gemini-2.5-flash'})
   async analyzeFoodPhoto(file){
-    const cfg = this.getConfig();
-    const hasGemini = !!cfg.geminiKey;
-    if(!hasGemini && !cfg.groqKey) return {error: "Add Gemini API key (AIza...) in Profile > Settings. Get free at aistudio.google.com/app/apikey"};
-    const base64 = await new Promise(res=>{
+    if(!this.isPuterReady()){
+      return {error: "Puter AI not loaded. Check internet connection. Script: https://js.puter.com/v2/"};
+    }
+
+    // Convert file to data URL for Puter vision
+    const dataUrl = await new Promise(res=>{
       const r = new FileReader();
-      r.onload = ()=> res(r.result.split(',')[1]);
+      r.onload = ()=> res(r.result);
       r.readAsDataURL(file);
     });
-    const mime = file.type || 'image/jpeg';
-    const prompt = `You are a nutrition expert. Estimate dish name, calories, protein_g, carbs_g, fat_g. Return ONLY JSON: {"name":"Dish Name","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10}`;
-    if(hasGemini){
-      try{
-        const gemRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${cfg.geminiKey}`,{
-          method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({
-            contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime, data:base64}}]}],
-            generationConfig:{temperature:0.2, maxOutputTokens:300}
-          })
-        });
-        const gemData = await gemRes.json();
-        if(gemData.error) throw new Error(gemData.error.message);
-        const text = gemData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const json = this.extractJson(text);
-        if(json && json.calories) return json;
-        throw new Error("No JSON: "+text);
-      }catch(e){
-        return {error: "Gemini failed: "+e.message+" - Try a clearer photo"};
+
+    const prompt = `You are a nutrition expert. Look at this food photo. Estimate dish name (keep English), calories, protein_g, carbs_g, fat_g. 
+Return ONLY valid JSON with no extra text, no markdown:
+{"name":"Dish Name","calories":123,"protein_g":12,"carbs_g":20,"fat_g":10}
+
+If not food, return {"error":"not_food"}`;
+
+    try{
+      // Puter vision: prompt + image data URL + model
+      // Using gemini-2.5-flash which supports vision
+      const response = await puter.ai.chat(
+        prompt,
+        dataUrl,
+        { model: 'google/gemini-2.5-flash' }
+      );
+
+      let text = "";
+      if(typeof response === 'string') text = response;
+      else if(response.message?.content) text = response.message.content;
+      else if(response.text) text = response.text;
+      else text = JSON.stringify(response);
+
+      const json = this.extractJson(text);
+      if(json && json.calories){
+        return json;
       }
+      // Try to find numbers if JSON fails
+      if(json && json.error) return json;
+      
+      // Fallback: try to parse manually
+      console.warn("Puter vision raw:", text);
+      return {error: "Could not parse nutrition data. Raw: " + text.slice(0,200)};
+      
+    }catch(e){
+      console.error("Puter vision error", e);
+      return {error: "Food photo analysis failed: " + e.message + ". Try a clearer photo with good lighting."};
     }
-    return {error: "Use Gemini for food photos - Groq vision is deprecated"};
+  },
+
+  // --- Simple test from your example ---
+  async testPuter(){
+    if(!this.isPuterReady()) throw new Error("Puter not ready");
+    const response = await puter.ai.chat("Classify the following text as positive, negative, or neutral: 'The product works well but the delivery was late.'", {
+      model: 'google/gemini-2.5-flash-lite'
+    });
+    return response;
   }
 };

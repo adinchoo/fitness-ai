@@ -86,7 +86,7 @@ $("#syncButton").onclick=async()=>{ await loadRecords(); render(); toast("Synced
 async function enterApp(){
   show("app");
   $("#dateLabel").textContent = new Date().toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long'});
-  $("#greeting").textContent = `Good ${new Date().getHours()<12?'Morning':new Date().getHours()<18?'Afternoon':'Evening'}, ${profile?.full_name?.split(' ')[0]||'friend'}`;
+  $("#greeting").textContent = `Good ${new Date().getHours()<12?'Morning':new Date().getHours()<18?'Afternoon':'Evening'}, ${profile?.full_name?.split(' ')[0]||'bro'}`;
   await Promise.all([loadProfile(), loadRecords()]);
   initUI();
   render();
@@ -145,28 +145,28 @@ function initUI(){
   buildProfileForm();
   $("#refreshButton").onclick=async()=>{ await loadRecords(); render(); toast("Refreshed") };
   $("#exportButton").onclick=exportJSON;
-  const saveKeys=()=>{
-    const c=config()||{}; const groq=$("#groqKeyInput")?.value.trim()||""; const gemini=$("#geminiKeyInput")?.value.trim()||"";
-    if(gemini && !gemini.startsWith("AIza")){ toast("Gemini must start with AIza...",true); return; }
-    c.groqKey=groq; c.geminiKey=gemini; localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); toast("Keys saved"); $("#keyStatus").textContent="✅ Saved "+(groq?"Groq ":"")+(gemini?"Gemini":""); updateAIMode();
-  };
-  if($("#saveKeysBtn")) $("#saveKeysBtn").onclick=saveKeys;
-  if($("#groqKeyInput")) $("#groqKeyInput").value=config()?.groqKey||"";
-  if($("#geminiKeyInput")) $("#geminiKeyInput").value=config()?.geminiKey||"";
+  // Puter hardcoded - no keys needed
   if($("#testAIButton")) $("#testAIButton").onclick=async()=>{
-    const c=config()||{}; if(!c.geminiKey && !c.groqKey){ toast("Add key",true); return; }
-    $("#keyStatus").textContent="Testing...";
+    const out=$("#puterTestOutput");
+    if(out){ out.style.display='block'; out.textContent='Testing Puter AI...'; }
+    $("#keyStatus").textContent="Testing Puter...";
     try{
-      if(c.geminiKey){
-        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c.geminiKey}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"Say ok"}]}]})});
-        const data=await res.json(); if(data.error) throw new Error(data.error.message);
-        $("#keyStatus").textContent="✅ Gemini works!"; toast("Gemini works");
-      } else {
-        const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Authorization":"Bearer "+c.groqKey,"Content-Type":"application/json"},body:JSON.stringify({model:"llama-3.1-8b-instant",messages:[{role:"user",content:"Say ok"}],max_tokens:10})});
-        const data=await res.json(); if(data.error) throw new Error(data.error.message);
-        $("#keyStatus").textContent="✅ Groq works!"; toast("Groq works");
-      }
-    }catch(e){ $("#keyStatus").textContent="❌ "+e.message; toast(e.message,true); }
+      // This is exactly your example
+      const response = await puter.ai.chat("Classify the following text as positive, negative, or neutral: 'The product works well but the delivery was late.'", {
+        model: 'google/gemini-2.5-flash-lite'
+      });
+      const text = typeof response === 'string' ? response : response.message?.content || JSON.stringify(response);
+      if(out) out.textContent = "✅ Puter Response:\n" + text;
+      $("#keyStatus").textContent="✅ Puter AI works! Model: gemini-2.5-flash-lite";
+      toast("Puter AI works - hardcoded!");
+      // Also test AI module
+      const checkin = await AI.testPuter();
+      console.log("AI.testPuter", checkin);
+    }catch(e){ 
+      $("#keyStatus").textContent="❌ "+e.message; 
+      if(out) out.textContent = "❌ Error: " + e.message + "\nMake sure https://js.puter.com/v2/ loaded";
+      toast(e.message,true); 
+    }
   };
   updateAIMode();
   // Forms
@@ -189,9 +189,9 @@ function switchView(id){
 }
 
 function updateAIMode(){
-  const c=config()||{}; const hasGroq=!!c.groqKey; const hasGemini=!!c.geminiKey;
   const pill=$("#aiModePill"); if(!pill) return;
-  pill.textContent=hasGroq&&hasGemini?"Groq+Gemini":hasGemini?"Gemini":hasGroq?"Groq LLM":"Free AI";
+  const isPuter = typeof puter !== "undefined";
+  pill.textContent = isPuter ? "Puter • Gemini 2.5 Flash" : "Local AI";
 }
 
 function getLast7Data(){
@@ -281,7 +281,7 @@ function renderTodayLogs(){
     const name = x.meal_name || x.activity_name || (x.steps? `${x.steps} steps • ${x.distance_km}km` : null) || (x.duration_hours? `${x.duration_hours}h sleep score ${x.score||''}` : null) || (x.bpm? `${x.bpm} bpm HR` : null) || `Weight ${x.weight_kg}kg`;
     const meta = x.calories? `${x.calories} kcal` : x.duration_minutes? `${x.duration_minutes} min` : x.steps? `${x.source||'Manual'}` : x.source||'';
     return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleTimeString()} • ${esc(meta)}</small></div><span>${x.protein_g? x.protein_g+'g P':''}</span></div>`;
-  }).join('') || '<div class="empty">No logs today - start by logging weight or a meal!</div>';
+  }).join('') || '<div class="empty">No logs today - start with weight or meal!</div>';
 }
 
 function renderTodaySession(){
