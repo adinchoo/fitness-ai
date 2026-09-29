@@ -1,7 +1,11 @@
-// GPX / FIT Deep Report v7.4 - Full Data Show + AI + Map + Charts
+// GPX / FIT Deep Report v7.5 - Full Data Show + AI + Map + Charts + Loading
 const GpxReport = {
   data:null, map:null, poly:null,
   async loadFile(file){
+    const container = document.getElementById('gpxReportContainer');
+    if(container){
+      container.innerHTML = `<div class="ai-loading"><div class="spinner"></div><div><strong>Loading ${file.name}...</strong><br><small class="muted">Parsing ${file.name.endsWith('.fit')?'FIT binary':'GPX XML'} • ${(file.size/1024).toFixed(0)} KB</small></div></div>`;
+    }
     const ext=file.name.toLowerCase().split('.').pop();
     let parsed, type;
     if(ext==='gpx'){ const text=await file.text(); parsed=Integrations.parseGpx(text); type='GPX'; }
@@ -9,14 +13,12 @@ const GpxReport = {
     else throw new Error('Only .gpx and .fit supported, got .'+ext);
     this.buildData(file.name,type,parsed);
     this.render();
-    // save to global for debugging
     window._lastGpxReport=this.data;
   },
   buildData(fileName,type,parsed){
     let points=[], laps=parsed.lapsRaw||[], sessions=parsed.sessions||[];
     if(type==='GPX'){ points=parsed.tracks.flatMap(t=>t.points.map(p=>({...p, sport:t.sport}))); }
     else { points=parsed.recordsDetailed.map(r=>({lat:r.lat, lon:r.lon, ele:r.altitude, altitude:r.altitude, time:r.timestamp, timestamp:r.timestamp, hr:r.hr, cadence:r.cadence, speed:r.speed_kmh|| (r.speed? r.speed*3.6: null), speed_ms:r.speed, power:r.power, temp:r.temperature, distance:r.distance, cumDist:r.distance||0, raw:r.raw})); }
-    // fix cumDist for FIT if missing
     if(type==='FIT'){
       let lastValidDist=0;
       for(let i=0;i<points.length;i++){
@@ -24,7 +26,6 @@ const GpxReport = {
         else { points[i].cumDist=lastValidDist; }
       }
     } else {
-      // ensure distance
       for(let p of points){ p.distance=p.cumDist; }
     }
     let totalDist=0, elevGain=0, elevLoss=0, minEle=Infinity, maxEle=-Infinity, speeds=[], hrs=[], cads=[], powers=[], temps=[];
@@ -49,7 +50,6 @@ const GpxReport = {
     const totalTimeSec = Math.max(1, (lastTime-firstTime)/1000||sessions[0]?.elapsedSec||0);
     const avgSpeedKmh = totalTimeSec>0? (totalDist/1000)/(totalTimeSec/3600) : 0;
     const maxSpeedKmh = speeds.length?Math.max(...speeds):0;
-    // splits per 1km
     const splits=[]; let lastSplitDist=0, lastSplitTime=firstTime, splitHr=[], splitEleGain=0, lastEleForSplit=points[0]?.ele!=null? points[0].ele : points[0]?.altitude;
     for(let i=1;i<points.length;i++){
       const curDist=points[i].cumDist||points[i].distance||0;
@@ -122,14 +122,12 @@ const GpxReport = {
       const allY=datasets.flatMap(ds=>ds.data.map(p=>p.y).filter(v=>v!=null&&!isNaN(v))); if(!allY.length){ ctx.fillStyle='#99aabd'; ctx.fillText('No data',20,30); return; }
       let minY=Math.min(...allY), maxY=Math.max(...allY), range=Math.max(maxY-minY,1);
       const allX=datasets.flatMap(ds=>ds.data.map(p=>p.x)); const maxX=Math.max(...allX,1);
-      // grid
       ctx.strokeStyle='#1e324a'; ctx.setLineDash([4,6]); for(let i=0;i<4;i++){ const y=20+(H-40)*(i/3); ctx.beginPath(); ctx.moveTo(20,y); ctx.lineTo(W-20,y); ctx.stroke(); } ctx.setLineDash([]);
       datasets.forEach(ds=>{
         ctx.strokeStyle=ds.color; ctx.lineWidth=2.2; ctx.beginPath();
         ds.data.forEach((pt,i)=>{ const x=20+(pt.x/maxX)*(W-40); const y=H-20-((pt.y-minY)/range)*(H-40); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
         ctx.stroke();
       });
-      // labels min max
       ctx.fillStyle='#99aabd'; ctx.font='10px monospace'; ctx.fillText(`min ${minY.toFixed(0)} max ${maxY.toFixed(0)}`, 24, 14);
     };
     const eleData=pts.map(p=>({x:p.cumDist||p.distance||0, y:p.ele!=null? p.ele : p.altitude})).filter(p=>p.y!=null);
@@ -153,12 +151,16 @@ const GpxReport = {
   },
   async runAi(){
     const el=document.getElementById('gpxAiResult'); if(!el) return;
-    el.textContent='🤖 Analyzing '+this.data.stats.pointCount+' points, '+this.data.splits.length+' splits, elev gain '+Math.round(this.data.stats.elevGain)+'m... (uses Puter Gemini)';
+    const btn=document.getElementById('gpxAiBtn');
+    if(btn){ btn.disabled=true; btn.innerHTML='<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:6px"></div> Analyzing...'; }
+    el.innerHTML=`<div class="ai-loading"><div class="spinner"></div><div><strong>🤖 AI Analyzing ${this.data.stats.pointCount} points...</strong><br><small class="muted">Splits: ${this.data.splits.length} • Elev gain ${Math.round(this.data.stats.elevGain)}m • Using Puter Gemini • 5-10 sec</small></div></div>`;
     try{
-      // profile is global from app.js
       const txt=await AI.analyzeGpxFitReport(typeof profile!=='undefined'?profile:{full_name:'Athlete', primary_goal:'improve_fitness'}, this.data);
       el.textContent=txt;
-    }catch(e){ el.textContent='❌ '+e.message; console.error(e); }
+    }catch(e){ el.innerHTML=`<span style="color:#ff7a86">❌ ${e.message}</span>`; console.error(e); }
+    finally{
+      if(btn){ btn.disabled=false; btn.innerHTML='🤖 AI Analyze ALL Data'; }
+    }
   },
   exportJson(){
     const blob=new Blob([JSON.stringify(this.data,null,2)],{type:'application/json'});

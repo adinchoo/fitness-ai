@@ -52,3 +52,15 @@ canvas{width:100%!important}
 .proj-card{background:#0a1a2a;border:1px solid #1e324a;border-radius:14px;padding:12px;text-align:left}
 @media(min-width:720px){.grid2,.form-grid{grid-template-columns:repeat(2,1fr)}.stats-grid{grid-template-columns:repeat(4,1fr)}.stats-grid.three{grid-template-columns:repeat(3,1fr)}.quick-grid{grid-template-columns:repeat(4,1fr)}.bottom-nav{left:50%;right:auto;transform:translateX(-50%);width:700px;border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0}}
 @media(max-width:480px){.bottom-nav .nav{font-size:7px}.bottom-nav .nav span{font-size:16px}}
+
+
+/* === v7.5 ADDONS: Loading + Delete === */
+.ai-loading{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0a1a2a;border:1px solid #1e324a;border-radius:12px;color:#c8eef2;font-size:13px;line-height:1.4}
+.ai-loading .spinner{width:18px;height:18px;min-width:18px;border:2px solid #294058;border-top-color:var(--lime);border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn:disabled{opacity:0.5;pointer-events:none}
+.row .delete-btn{border:1px solid #55242e;background:#1a0f14;color:#ff9aa5;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.row .delete-btn:hover{background:#55242e;color:#fff}
+.meal-selected-header{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}

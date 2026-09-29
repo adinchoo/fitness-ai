@@ -3,13 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fitness AI Hub v7.4 GPX Full</title>
+  <title>Fitness AI Hub v7.5 - No Manual Meals + AI Loading</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#c6ff00">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
-  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
-  <!-- Leaflet for GPX Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,8 +17,8 @@
 
   <section id="setupScreen" class="center-screen hidden">
     <form id="setupForm" class="auth-card">
-      <div class="brand"><span>💪</span><div><h1>Connect Supabase v7.4 GPX</h1><p>Puter + FIT FULL + GPX FULL + AI</p></div></div>
-      <div class="notice">Run supabase/schema.sql first! Then paste URL and anon key. NEW: GPX Report shows ALL data points.</div>
+      <div class="brand"><span>💪</span><div><h1>Connect Supabase v7.5</h1><p>AI Photo + Remove Meal + Loading</p></div></div>
+      <div class="notice">Run supabase/schema.sql first! v7.5: Manual food list hidden by default, AI photo is primary. Added delete for meals + loading spinners.</div>
       <label>Project URL<input id="setupUrl" type="url" required placeholder="https://xxxx.supabase.co"></label>
       <label>Publishable / anon key<textarea id="setupKey" required rows="3" placeholder="sb_publishable_... or eyJ..."></textarea></label>
       <button class="btn primary" type="submit">Save and connect</button>
@@ -31,7 +27,7 @@
 
   <section id="authScreen" class="center-screen hidden">
     <div class="auth-card wide">
-      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub v7.4</h1><p>Puter • FIT FULL • GPX FULL • Map + AI</p></div></div>
+      <div class="brand"><span>💪</span><div><h1>Fitness AI Hub v7.5</h1><p>AI Photo • No Manual List • Loading</p></div></div>
       <div class="tabs"><button class="tab active" data-auth-tab="login" type="button">Sign in</button><button class="tab" data-auth-tab="signup" type="button">Create account</button></div>
       <form id="loginForm" class="stack auth-panel active">
         <label>Email<input name="email" type="email" required></label>
@@ -85,7 +81,6 @@
         <article class="panel ai-panel">
           <div class="panel-head"><h3>✦ YESTERDAY AI CHECK-IN</h3><span class="pill" id="aiModePill">Puter</span></div>
           <p id="yesterdayCheckin" class="ai-text">Loading...</p>
-          <div id="recoveryBar" class="recovery-bar"></div>
         </article>
         <article class="panel">
           <div class="panel-head"><h3>⚡ TODAY'S SESSION + RINGS</h3><button class="link-btn" data-view-jump="workoutView">Change</button></div>
@@ -94,7 +89,7 @@
         </article>
         <div class="quick-grid">
           <button data-open="bodyDialog"><span>⚖</span><strong>Log Weight</strong></button>
-          <button data-open="mealDialog"><span>🍽</span><strong>Log Meal 📸</strong></button>
+          <button data-open="mealDialog"><span>🍽</span><strong>Log Meal 📸 AI</strong></button>
           <button data-open="workoutDialog"><span>💪</span><strong>Log Workout</strong></button>
           <button data-open="sleepDialog"><span>😴</span><strong>Log Sleep</strong></button>
           <button data-open="stepsDialog"><span>🚶</span><strong>Log Steps</strong></button>
@@ -102,15 +97,10 @@
           <button data-open="importDialog"><span>⌚</span><strong>Import FIT/GPX</strong></button>
           <button data-view="gpxReportView"><span>🗺</span><strong>GPX FULL Report</strong></button>
         </div>
-        <article class="panel"><div class="panel-head"><h3>Today's logs</h3><button id="refreshButton" class="link-btn">Refresh</button></div><div id="todayLogs"></div></article>
+        <article class="panel"><div class="panel-head"><h3>Today's logs (tap Remove to delete meal)</h3><button id="refreshButton" class="link-btn">Refresh</button></div><div id="todayLogs"></div></article>
       </section>
 
-      <section id="workoutView" class="view">
-        <div class="hero"><h2>Workout</h2><select id="workoutTemplateSelect"></select></div>
-        <div id="workoutEditor" class="panel"></div>
-        <button id="saveWorkoutBtn" class="btn primary full">Save Workout</button>
-      </section>
-
+      <section id="workoutView" class="view"><div class="hero"><h2>Workout</h2><select id="workoutTemplateSelect"></select></div><div id="workoutEditor" class="panel"></div><button id="saveWorkoutBtn" class="btn primary full">Save Workout</button></section>
       <section id="activityView" class="view">
         <h2>Activity • Steps • Heart</h2>
         <article class="panel"><h3>STEPS - LAST 14 DAYS</h3><canvas id="stepsChart" height="180"></canvas></article>
@@ -119,84 +109,46 @@
       </section>
 
       <section id="gpxReportView" class="view">
-        <div class="hero"><h2>🗺 GPX / FIT Deep Report - ALL DATA</h2><button class="btn ghost small" onclick="document.getElementById('gpxReportFile').click()">📁 Open File</button></div>
+        <div class="hero"><h2>🗺 GPX / FIT Deep Report</h2><button class="btn ghost small" onclick="document.getElementById('gpxReportFile').click()">📁 Open File</button></div>
         <article class="panel" style="border:2px dashed #58a9ff;text-align:center;background:linear-gradient(145deg,#102c38,#122235)">
           <input type="file" id="gpxReportFile" accept=".gpx,.fit" hidden>
           <div id="gpxDropZone" style="padding:24px;border-radius:12px">
             <div style="font-size:42px">🗺️📂</div>
             <h3 style="margin:8px 0">Drop .GPX or .FIT here</h3>
-            <p class="muted" style="font-size:12px">Shows EVERY field: lat/lon/ele/time/hr/cadence/power/temp/speed/distance + map + elevation + HR charts + splits/km + full points table + AI analysis</p>
-            <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap">
-              <span class="pill">Garmin</span><span class="pill">Wahoo</span><span class="pill">Zwift</span><span class="pill">Coros</span><span class="pill">Strava</span><span class="pill">Komoot</span>
-            </div>
+            <p class="muted" style="font-size:12px">Shows EVERY field + AI loading spinner</p>
           </div>
         </article>
-        <div id="gpxReportContainer"><div class="empty">No file loaded yet - drop a GPX or FIT above to see full report. Example: Garmin/Activities/*.fit or Strava export .gpx</div></div>
+        <div id="gpxReportContainer"><div class="empty">No file loaded yet</div></div>
       </section>
 
       <section id="reportView" class="view">
         <div class="hero"><h2>Premium Report</h2><button id="genReportBtn" class="btn primary small">Generate AI Report</button></div>
-        <article class="panel"><h3>WEIGHT JOURNEY - LAST 7 DAYS</h3><canvas id="reportWeightChart" height="200"></canvas></article>
+        <article class="panel"><h3>WEIGHT JOURNEY</h3><canvas id="reportWeightChart" height="200"></canvas></article>
         <article class="panel"><h3>CALORIES vs PROTEIN</h3><canvas id="reportCalChart" height="160"></canvas><div id="last7Summary" style="margin-top:12px"></div></article>
         <article class="panel ai-panel"><div class="panel-head"><h3>✦ AI WEEKLY INSIGHT</h3></div><div id="weeklyReport" class="ai-text">Tap Generate...</div></article>
       </section>
 
       <section id="historyView" class="view">
         <h2>History</h2>
-        <article class="panel"><h3>WEIGHT JOURNEY</h3><canvas id="weightChart" height="200"></canvas><div id="last14" class="last14" style="margin-top:12px"></div></article>
+        <article class="panel"><h3>WEIGHT JOURNEY</h3><canvas id="weightChart" height="200"></canvas></article>
         <article class="panel"><h3>All logs</h3><div id="allLogs"></div></article>
       </section>
 
       <section id="photosView" class="view">
         <h2>Photos</h2>
-        <div class="panel"><div class="grid2"><button class="btn ghost" id="takePhotoBtn">📸 Take</button><label class="btn ghost file-btn">Library<input type="file" id="photoFileInput" accept="image/*" hidden></label></div><div style="margin-top:12px;display:flex;gap:8px"><select id="photoType"><option>Front</option><option>Back</option><option>Side</option></select><input type="file" id="hiddenCameraInput" accept="image/*" capture="environment" hidden></div></div>
+        <div class="panel"><div class="grid2"><button class="btn ghost" id="takePhotoBtn">📸 Take</button><label class="btn ghost file-btn">Library<input type="file" id="photoFileInput" accept="image/*" hidden></label></div></div>
         <div id="photoGrid" class="photo-grid"></div>
-      </section>
-
-      <section id="integrationsView" class="view">
-        <h2>Integrations • GPX FULL v7.4</h2>
-        <article class="panel" style="border:2px solid #c6ff00">
-          <h3>🗺 GPX / FIT Deep Report (NEW - ALL DATA)</h3>
-          <p class="muted">Now shows every field: GPS, elevation, HR, cadence, power, temp, speed + map + AI</p>
-          <button class="btn primary small" onclick="document.querySelector('[data-view=gpxReportView]').click()">Open GPX Report →</button>
-        </article>
-        <article class="panel" style="border:2px solid #58a9ff">
-          <h3>📁 FIT File - Garmin / Wahoo / Zwift / Coros (FULL DECODE)</h3>
-          <p class="muted">Binary .fit parsed locally with full records: lat/lon (semicircles→deg), alt/5-500, dist/100, speed/1000, HR, cad, power, temp</p>
-          <input type="file" id="fitFile" accept=".fit,.gpx">
-          <button onclick="handleFitImport()" class="btn primary small" style="margin-top:8px">Import & Show Full Report</button>
-          <div id="fitStatus" class="muted" style="margin-top:8px;word-break:break-all"></div>
-        </article>
-        <article class="panel" style="border:2px solid #58a9ff">
-          <h3>🗺 GPX File - Strava / Komoot / AllTrails (FULL)</h3>
-          <p class="muted">Any .gpx track. Parses extensions hr/cad/power/atemp, Haversine distance, splits</p>
-          <input type="file" id="gpxFile" accept=".gpx">
-          <button onclick="handleGpxImport()" class="btn primary small" style="margin-top:8px">Import & Show Full Report</button>
-          <div id="gpxStatus" class="muted" style="margin-top:8px;word-break:break-all"></div>
-        </article>
       </section>
 
       <section id="profileView" class="view">
         <div class="panel" style="border:2px solid #5de8b6;background:linear-gradient(145deg,#102c38,#122235)">
-          <h3>🔗 Your Auto Sync URL - v7.4 GPX</h3>
-          <div style="background:#0a1a2a;padding:12px;border-radius:10px;word-break:break-all;font-family:monospace;font-size:11px;border:1px solid #1e324a">
-            <span id="finalUrl">Login first to generate URL</span>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button class="btn primary small" onclick="navigator.clipboard.writeText(document.getElementById('finalUrl').textContent); toast('URL copied!')">📋 Copy URL</button>
-            <button class="btn ghost small" onclick="navigator.clipboard.writeText(document.getElementById('userIdDisplay').textContent); toast('User ID copied!')">Copy User ID</button>
-          </div>
+          <h3>🔗 Your Auto Sync URL</h3>
+          <div style="background:#0a1a2a;padding:12px;border-radius:10px;word-break:break-all;font-family:monospace;font-size:11px;border:1px solid #1e324a"><span id="finalUrl">Login first</span></div>
           <small class="muted" style="display:block;margin-top:10px">User ID: <code id="userIdDisplay">--</code></small>
         </div>
         <h2 style="margin-top:20px">Profile</h2>
         <form id="profileForm" class="panel form-grid"></form>
-        <article class="panel" style="border:2px solid #5de8b6;background:linear-gradient(145deg,#102c38,#122235)">
-          <h3>🤖 AI - PUTER + GPX Analyzer</h3>
-          <p class="muted" style="font-size:13px">Text: gemini-2.0-flash-lite | Vision: gemini-2.0-flash<br>NEW: analyzeGpxFitReport() uses all points + splits + elev</p>
-          <div class="button-row" style="margin-top:14px"><button id="testPuterButton" class="btn primary" type="button">🤖 Test Puter AI</button></div>
-          <pre id="puterTestOutput" class="muted" style="margin-top:10px;white-space:pre-wrap;background:#0a1a2a;padding:12px;border-radius:8px;display:none;border:1px solid #1e324a;min-height:40px"></pre>
-        </article>
-        <article class="panel"><h3>Data</h3><div class="button-row"><button id="exportButton" class="btn ghost" type="button">Export JSON</button><button id="deleteAccountData" class="btn danger" type="button">Delete health data</button></div></article>
+        <article class="panel"><div class="panel-head"><h3>🤖 AI - Loading Demo</h3></div><button id="testPuterButton" class="btn primary">🤖 Test Puter AI</button><pre id="puterTestOutput" class="muted" style="margin-top:10px;white-space:pre-wrap;background:#0a1a2a;padding:12px;border-radius:8px;display:none;border:1px solid #1e324a"></pre></article>
       </section>
     </main>
 
@@ -204,35 +156,62 @@
       <button class="nav active" data-view="homeView"><span>⌂</span>Home</button>
       <button class="nav" data-view="activityView"><span>❤</span>Activity</button>
       <button class="nav" data-view="workoutView"><span>💪</span>Workout</button>
-      <button class="nav" data-view="gpxReportView"><span>🗺</span>GPX Report</button>
+      <button class="nav" data-view="gpxReportView"><span>🗺</span>GPX</button>
       <button class="nav" data-view="reportView"><span>📊</span>Report</button>
-      <button class="nav" data-view="integrationsView"><span>⌚</span>Sync</button>
       <button class="nav" data-view="profileView"><span>◎</span>Profile</button>
+      <button class="nav" data-view="historyView"><span>◷</span>History</button>
     </nav>
   </div>
 
-  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal 📸</h3><button data-close type="button">×</button></header>
+  <!-- MEAL DIALOG v7.5: REMOVED existing manual list from main view, AI first + loading -->
+  <dialog id="mealDialog"><form id="mealForm" class="dialog-form"><header><h3>Log Meal 📸 AI</h3><button data-close type="button">×</button></header>
     <div class="kpi-row"><div><span>KCAL</span><strong id="mealKcal">0/2200</strong></div><div><span>PROTEIN</span><strong id="mealPro">0g/180g</strong></div></div>
-    <div style="display:grid;gap:8px;background:#0a1a2a;padding:12px;border-radius:12px;border:1px solid #1e324a">
-      <strong style="font-size:12px">📸 CAMERA FIRST</strong>
-      <div class="grid2"><label class="btn primary file-btn" style="text-align:center">📷 TAKE PHOTO<input type="file" id="mealCameraInput" accept="image/*" capture="environment" hidden></label><label class="btn ghost file-btn" style="text-align:center">🖼 Library<input type="file" id="foodPhotoInput" accept="image/*" hidden></label></div>
-      <div id="mealPhotoPreview" style="display:none"><img id="mealPreviewImg" style="width:100%;border-radius:12px;border:1px solid var(--line)"><small id="foodPhotoStatus" class="muted">Ready</small></div>
+    
+    <div style="display:grid;gap:8px;background:#0a1a2a;padding:12px;border-radius:12px;border:2px solid #c6ff00">
+      <strong style="font-size:12px">📸 AI PHOTO - PRIMARY METHOD</strong>
+      <div class="grid2">
+        <label class="btn primary file-btn" style="text-align:center">📷 TAKE PHOTO<input type="file" id="mealCameraInput" accept="image/*" capture="environment" hidden></label>
+        <label class="btn ghost file-btn" style="text-align:center">🖼 FROM LIBRARY<input type="file" id="foodPhotoInput" accept="image/*" hidden></label>
+      </div>
+      <div id="mealPhotoPreview" style="display:none">
+        <img id="mealPreviewImg" style="width:100%;border-radius:12px;border:1px solid var(--line);max-height:200px;object-fit:cover">
+        <small id="foodPhotoStatus" class="muted" style="display:block;margin-top:8px">Ready</small>
+      </div>
+      <div id="foodPhotoStatus" class="muted">Take a photo to analyze with AI</div>
     </div>
-    <div class="tabs small" id="mealCatTabs"></div><div id="mealOptions" class="meal-options"></div><div id="mealSelected" class="selected-list"></div>
-    <div class="custom-add"><input id="customFoodName" placeholder="Food name"><div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div><button type="button" id="addCustomFood" class="btn ghost small">Add custom</button></div>
-    <button class="btn primary" type="submit" id="logMealBtn">Log 0</button>
+
+    <div id="mealSelected" class="selected-list"></div>
+
+    <div class="custom-add">
+      <strong style="font-size:11px">➕ CUSTOM FOOD</strong>
+      <input id="customFoodName" placeholder="Food name e.g. Nasi Lemak">
+      <div class="grid2"><input id="customKcal" type="number" placeholder="kcal"><input id="customPro" type="number" placeholder="protein g"></div>
+      <button type="button" id="addCustomFood" class="btn ghost small">Add custom</button>
+    </div>
+
+    <!-- REMOVED existing meal list from main flow - now hidden in details -->
+    <details style="margin-top:8px;background:#091726;border:1px dashed #294058;border-radius:10px;padding:10px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--muted)">🍱 Show OLD manual food list (deprecated - removed from main flow)</summary>
+      <div style="margin-top:10px">
+        <div class="notice" style="font-size:11px">This is the old hardcoded list. Use AI photo instead. Kept only for fallback.</div>
+        <div class="tabs small" id="mealCatTabs"></div>
+        <div id="mealOptions" class="meal-options"></div>
+      </div>
+    </details>
+
+    <button class="btn primary" type="submit" id="logMealBtn">Log Meal (select photo first)</button>
   </form></dialog>
+
   <dialog id="bodyDialog"><form id="bodyForm" class="dialog-form"><header><h3>Log Weight</h3><button data-close type="button">×</button></header><label>Weight kg<input name="weight_kg" type="number" step="0.1" required></label><label>Body fat % (optional)<input name="body_fat" type="number" step="0.1"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header><label>Activity<input name="activity_name" required placeholder="Running, Garmin..."></label><div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="workoutDialog"><form id="workoutQuickForm" class="dialog-form"><header><h3>Quick Workout</h3><button data-close type="button">×</button></header><label>Activity<input name="activity_name" required></label><div class="grid2"><label>Minutes<input name="duration_minutes" type="number" required></label><label>Cal burned<input name="calories_burned" type="number"></label></div><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
   <dialog id="sleepDialog"><form id="sleepForm" class="dialog-form"><header><h3>Log Sleep</h3><button data-close type="button">×</button></header><div class="grid2"><label>Hours<input name="duration_hours" type="number" step="0.1" required></label><label>Quality 1-5<input name="quality" type="number" min="1" max="5" value="3"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="stepsDialog"><form id="stepsForm" class="dialog-form"><header><h3>Log Steps / Walk</h3><button data-close type="button">×</button></header><label>Steps<input name="steps" type="number" required></label><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="hrDialog"><form id="hrForm" class="dialog-form"><header><h3>Log Heart Rate</h3><button data-close type="button">×</button></header><label>BPM now<input name="bpm" type="number" required></label><div class="grid2"><label>Resting BPM<input name="resting_bpm" type="number"></label><label>Avg BPM<input name="avg_bpm" type="number"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
-  <dialog id="importDialog"><form class="dialog-form" onsubmit="return false"><header><h3>Import Center - GPX FULL</h3><button data-close type="button">×</button></header><p class="muted">Quick import - FIT/GPX auto-detected and shows full report.</p><input type="file" id="quickImportFile" accept=".csv,.fit,.gpx"><select id="quickImportType"><option value="gpx">GPX Full Report</option><option value="fit">FIT Full Report</option><option value="zepp">Zepp Weight</option><option value="garmin">Garmin Steps</option><option value="strava">Strava Activities</option></select><button class="btn primary" onclick="handleQuickImport()">Import & Show Report</button><div id="quickImportStatus" class="muted"></div></form></dialog>
+  <dialog id="stepsDialog"><form id="stepsForm" class="dialog-form"><header><h3>Log Steps</h3><button data-close type="button">×</button></header><label>Steps<input name="steps" type="number" required></label><label>Distance km<input name="distance_km" type="number" step="0.01"></label><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="hrDialog"><form id="hrForm" class="dialog-form"><header><h3>Log HR</h3><button data-close type="button">×</button></header><label>BPM now<input name="bpm" type="number" required></label><div class="grid2"><label>Resting BPM<input name="resting_bpm" type="number"></label><label>Avg BPM<input name="avg_bpm" type="number"></label></div><label>Date<input name="logged_at" type="datetime-local" required></label><button class="btn primary">Save</button></form></dialog>
+  <dialog id="importDialog"><form class="dialog-form" onsubmit="return false"><header><h3>Import Center</h3><button data-close type="button">×</button></header><input type="file" id="quickImportFile" accept=".csv,.fit,.gpx"><select id="quickImportType"><option value="gpx">GPX Full Report</option><option value="fit">FIT Full Report</option></select><button class="btn primary" onclick="handleQuickImport()">Import & Show Report</button><div id="quickImportStatus" class="muted"></div></form></dialog>
 
   <script src="./foods.js"></script>
   <script src="./health.js"></script>
   <script src="./integrations.js"></script>
-  <script src="./apple-health.js"></script>
   <script src="./ai.js"></script>
   <script src="./gpx-report.js"></script>
   <script src="./app.js" defer></script>

@@ -148,25 +148,24 @@ function initUI(){
   $("#photoFileInput") && ($("#photoFileInput").onchange=e=>handlePhotoUpload(e.target.files[0]));
   $("#takePhotoBtn") && ($("#takePhotoBtn").onclick=()=>$("#hiddenCameraInput").click());
   $("#hiddenCameraInput") && ($("#hiddenCameraInput").onchange=e=>handlePhotoUpload(e.target.files[0]));
-  const camInput = $("#foodCameraInput");
+  // FIXED v7.5: IDs now match index.html
+  const camInput = $("#mealCameraInput");
   const libInput = $("#foodPhotoInput");
   if(camInput){
     camInput.onchange=e=>handleFoodPhoto(e.target.files[0]);
-    $("#foodCameraBtn") && ($("#foodCameraBtn").onclick=()=>camInput.click());
-    $("#foodCameraBtnSmall") && ($("#foodCameraBtnSmall").onclick=()=>camInput.click());
   }
   if(libInput){
     libInput.onchange=e=>handleFoodPhoto(e.target.files[0]);
-    $("#foodLibraryBtn") && ($("#foodLibraryBtn").onclick=()=>libInput.click());
   }
-  $("#addCustomFood") && ($("#addCustomFood").onclick=()=>{ const n=$("#customFoodName").value.trim(), kc=+$("#customKcal").value, pr=+$("#customPro").value; if(!n||!kc) return toast("Name + kcal needed",true); addSelected({name:n, kcal:kc, protein:pr, carbs:0, fat:0}); });
+  $("#clearSelectedBtn") && ($("#clearSelectedBtn").onclick=()=>{ selectedFoods=[]; renderMealOptions(); renderSelected(); toast("Cleared"); });
+  $("#addCustomFood") && ($("#addCustomFood").onclick=()=>{ const n=$("#customFoodName").value.trim(), kc=+$("#customKcal").value, pr=+$("#customPro").value; if(!n||!kc) return toast("Name + kcal needed",true); addSelected({name:n, kcal:kc, protein:pr, carbs:0, fat:0}); $("#customFoodName").value=""; $("#customKcal").value=""; $("#customPro").value=""; });
   buildProfileForm();
   $("#refreshButton") && ($("#refreshButton").onclick=async()=>{ await loadRecords(); render(); toast("Refreshed") });
   $("#exportButton") && ($("#exportButton").onclick=exportJSON);
   if($("#testPuterButton")){
     $("#testPuterButton").onclick=async()=>{
       $("#puterTestOutput").style.display="block";
-      $("#puterTestOutput").textContent="Testing Puter...";
+      $("#puterTestOutput").innerHTML='<div class="ai-loading"><div class="spinner"></div> Testing Puter AI...</div>';
       try{ const res = await AI.testPuter(); $("#puterTestOutput").textContent = res; toast("Puter works!"); updateAIMode(); }
       catch(e){ $("#puterTestOutput").textContent = "❌ " + e.message; toast(e.message,true); }
     };
@@ -179,7 +178,6 @@ function initUI(){
   $("#stepsForm") && ($("#stepsForm").onsubmit=saveSteps);
   $("#hrForm") && ($("#hrForm").onsubmit=saveHR);
 
-  // === GPX FULL REPORT v7.4 ===
   const gpxReportInput = document.getElementById('gpxReportFile');
   if(gpxReportInput){
     gpxReportInput.onchange=e=>{ const f=e.target.files[0]; if(f){ GpxReport.loadFile(f).then(()=>{ switchView('gpxReportView'); toast('GPX/FIT full report loaded: '+f.name); }).catch(err=>toast(err.message,true)); } };
@@ -203,7 +201,7 @@ function switchView(id){
 }
 function updateAIMode(){
   const pill=document.getElementById("aiModePill"); if(!pill) return;
-  if(typeof puter!== "undefined" && puter.ai){ pill.textContent = "Puter • " + (AI.MODELS?.text || "Gemini 2.0"); pill.style.background="#163a33"; pill.style.color="#5de8b6"; }
+  if(typeof puter!== "undefined" && puter.ai){ pill.textContent = "Puter • " + (AI.MODELS?.text || "Gemini 2.5"); pill.style.background="#163a33"; pill.style.color="#5de8b6"; }
   else { pill.textContent = "Local AI"; pill.style.background="#55242e"; pill.style.color="#ffc1c7"; }
 }
 function getLast7Data(){
@@ -259,15 +257,24 @@ function render(){
   const ySteps = t.dailySteps[yesterdayStr()]||0;
   const ySleep = records.sleep.find(s=>isYesterday(s.logged_at));
   const yHR = records.hr.find(h=>isYesterday(h.logged_at));
-  AI.generateCheckin(profile, {calories:yCal, targetCal:profile.target_calories, protein:yPro, targetPro:profile.target_protein_g, workoutCount: records.workoutSessions.filter(s=>isYesterday(s.logged_at)).length, steps:ySteps, sleepHours: ySleep?Number(ySleep.duration_hours):0, sleepScore: ySleep?.score||0, avgHR: yHR?.bpm||0}).then(txt=>{ $("#yesterdayCheckin").textContent=txt; });
+  const checkEl = $("#yesterdayCheckin");
+  if(checkEl) checkEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div> Generating AI check-in...</div>';
+  AI.generateCheckin(profile, {calories:yCal, targetCal:profile.target_calories, protein:yPro, targetPro:profile.target_protein_g, workoutCount: records.workoutSessions.filter(s=>isYesterday(s.logged_at)).length, steps:ySteps, sleepHours: ySleep?Number(ySleep.duration_hours):0, sleepScore: ySleep?.score||0, avgHR: yHR?.bpm||0}).then(txt=>{ if(checkEl) $("#yesterdayCheckin").textContent=txt; });
   drawRings();
 }
 function renderTodayLogs(){
-  const todayItems = [...records.meals.filter(m=>isToday(m.logged_at)),...records.activities.filter(a=>isToday(a.logged_at)),...records.steps.filter(s=>isToday(s.logged_at)),...records.sleep.filter(s=>isToday(s.logged_at)),...records.hr.filter(h=>isToday(h.logged_at)),...records.body.filter(b=>isToday(b.logged_at))].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at));
-  $("#todayLogs").innerHTML = todayItems.slice(0,12).map(x=>{
-    const name = x.meal_name || x.activity_name || (x.steps? `${x.steps} steps • ${x.distance_km}km` : null) || (x.duration_hours? `${x.duration_hours}h sleep score ${x.score||''}` : null) || (x.bpm? `${x.bpm} bpm HR` : null) || `Weight ${x.weight_kg}kg`;
-    const meta = x.calories? `${x.calories} kcal` : x.duration_minutes? `${x.duration_minutes} min` : x.steps? `${x.source||'Manual'}` : x.source||'';
-    return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleTimeString()} • ${esc(meta)}</small></div><span>${x.protein_g? x.protein_g+'g P':''}</span></div>`;
+  const items = [
+    ...records.meals.map(x=>({...x, _table:'meal_logs', _display:x.meal_name, _meta:`${x.calories} kcal • ${x.protein_g||0}g P`, _canDelete:true})),
+    ...records.activities.map(x=>({...x, _table:'activity_logs', _display:x.activity_name, _meta:`${x.duration_minutes} min • ${x.distance_km||0}km`})),
+    ...records.steps.map(x=>({...x, _table:'steps_logs', _display:`${x.steps} steps • ${x.distance_km}km`, _meta:x.source||'Manual'})),
+    ...records.sleep.map(x=>({...x, _table:'sleep_logs', _display:`${x.duration_hours}h sleep`, _meta:`Score ${x.score||'--'} • Q${x.quality}/5`})),
+    ...records.hr.map(x=>({...x, _table:'heart_rate_logs', _display:`${x.bpm} bpm HR`, _meta:x.source||''})),
+    ...records.body.map(x=>({...x, _table:'body_logs', _display:`Weight ${x.weight_kg}kg`, _meta:x.source||''})),
+  ].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at));
+
+  $("#todayLogs").innerHTML = items.slice(0,15).map(x=>{
+    const delBtn = x._canDelete ? `<button class="delete-btn" onclick="deleteMealLog('${x.id}')">🗑 Remove</button>` : '';
+    return `<div class="row"><div><strong>${esc(x._display)}</strong><small>${new Date(x.logged_at).toLocaleTimeString()} • ${esc(x._meta)}</small></div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--muted)">${x.protein_g? x.protein_g+'g P':''}</span>${delBtn}</div></div>`;
   }).join('') || '<div class="empty">No logs today - start with weight or meal!</div>';
 }
 function renderTodaySession(){
@@ -303,17 +310,20 @@ function renderSelected(){
   const cont=$("#mealSelected"); if(!cont) return;
   const totalK = selectedFoods.reduce((s,x)=>s+x.kcal,0);
   const totalP = selectedFoods.reduce((s,x)=>s+Number(x.protein),0);
-  $("#mealKcal").textContent = `${totalK}/${profile.target_calories}`;
-  $("#mealPro").textContent = `${Math.round(totalP)}g/${profile.target_protein_g}g`;
-  $("#logMealBtn").textContent = `Log ${selectedFoods.length} • ${totalK} kcal`;
-  cont.innerHTML = selectedFoods.map((s,i)=>`<div class="food-row selected"><div><strong>${esc(s.name)} ${s.size?`(${s.size})`:''}</strong><small>${s.kcal} kcal • ${s.protein}g</small></div><button class="link-btn" onclick="removeSelected(${i})">✕</button></div>`).join('');
+  const kcalEl=$("#mealKcal"); if(kcalEl) kcalEl.textContent = `${totalK}/${profile.target_calories}`;
+  const proEl=$("#mealPro"); if(proEl) proEl.textContent = `${Math.round(totalP)}g/${profile.target_protein_g}g`;
+  const logBtn=$("#logMealBtn"); if(logBtn && !logBtn.disabled) logBtn.textContent = selectedFoods.length? `Log ${selectedFoods.length} • ${totalK} kcal` : 'Log Meal (select photo first)';
+  cont.innerHTML = selectedFoods.length ? `<div class="meal-selected-header"><strong>Selected (${selectedFoods.length})</strong><button class="link-btn" id="clearSelectedBtn" type="button" onclick="clearSelectedFoods()">Clear all</button></div>` + selectedFoods.map((s,i)=>`<div class="food-row selected"><div><strong>${esc(s.name)} ${s.size?`(${s.size})`:''}</strong><small>${s.kcal} kcal • ${s.protein}g P</small></div><button class="link-btn" onclick="removeSelected(${i})">✕</button></div>`).join('') : '<div class="empty" style="padding:10px">No food selected yet. Take a photo with AI first, or use manual list below.</div>';
 }
 window.removeSelected = (i)=>{ selectedFoods.splice(i,1); renderMealOptions(); renderSelected(); };
+window.clearSelectedFoods = ()=>{ selectedFoods=[]; renderMealOptions(); renderSelected(); toast("Selection cleared"); };
 async function saveMeal(e){
-  e.preventDefault(); if(!selectedFoods.length) return toast("Select food first",true);
+  e.preventDefault(); if(!selectedFoods.length) return toast("Select food first - take photo with AI",true);
   const totalK = selectedFoods.reduce((s,x)=>s+x.kcal,0); const totalP = selectedFoods.reduce((s,x)=>s+Number(x.protein),0); const totalC = selectedFoods.reduce((s,x)=>s+Number(x.carbs||0),0); const totalF = selectedFoods.reduce((s,x)=>s+Number(x.fat||0),0);
   const name = selectedFoods.map(s=>s.name + (s.size?` ${s.size}`:'')).join(' + ');
+  const btn=$("#logMealBtn"); if(btn){ btn.disabled=true; btn.innerHTML='<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:6px"></div> Saving...'; }
   const {error} = await db.from('meal_logs').insert({user_id:user.id, meal_name:name, meal_type:currentCategory, category:currentCategory, calories:totalK, protein_g:totalP, carbs_g:totalC, fat_g:totalF, source:'Manual', logged_at:new Date().toISOString()});
+  if(btn){ btn.disabled=false; }
   if(error) return toast(error.message,true); selectedFoods=[]; renderMealOptions(); renderSelected(); $("#mealDialog").close(); await loadRecords(); render(); toast(`Logged ${totalK} kcal`);
 }
 async function saveBody(e){ e.preventDefault(); const fd=new FormData(e.currentTarget); const row={user_id:user.id, weight_kg:parseFloat(fd.get('weight_kg')), body_fat_percent: fd.get('body_fat')? parseFloat(fd.get('body_fat')):null, source:'Manual', logged_at: fd.get('logged_at')? new Date(fd.get('logged_at')).toISOString() : new Date().toISOString()}; const {error}=await db.from('body_logs').insert(row); if(error) return toast(error.message,true); $("#bodyDialog").close(); await loadRecords(); render(); toast("Weight logged"); }
@@ -338,13 +348,33 @@ async function saveWorkout(){
 async function handleFoodPhoto(file){
   if(!file) return;
   const status = $("#foodPhotoStatus");
-  if(status) status.textContent = "🔍 Analyzing with Puter AI...";
+  const previewWrap = $("#mealPhotoPreview");
+  const previewImg = $("#mealPreviewImg");
+  const logBtn = $("#logMealBtn");
+  if(previewWrap && previewImg){
+    previewImg.src = URL.createObjectURL(file);
+    previewWrap.style.display="block";
+  }
+  if(status){
+    status.innerHTML = `<div class="ai-loading"><div class="spinner"></div><div><strong>AI Analyzing Meal...</strong><br><small class="muted">Using Puter Gemini Vision - this takes 2-5 seconds</small></div></div>`;
+  }
+  if(logBtn){ logBtn.disabled=true; logBtn.innerHTML='<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:8px"></div> Analyzing...'; }
   toast("Analyzing meal photo...");
-  const res = await AI.analyzeFoodPhoto(file);
-  if(res.error){ if(status) status.textContent = "❌ " + res.error; return toast(res.error,true); }
-  if(status) status.textContent = `✅ ${res.name} • ${res.calories} kcal • P ${res.protein_g||0}g`;
-  addSelected({name:res.name, kcal:res.calories, protein:res.protein_g||0, carbs:res.carbs_g||0, fat:res.fat_g||0});
-  toast(`Added ${res.name}`);
+  try{
+    const res = await AI.analyzeFoodPhoto(file);
+    if(res.error){
+      if(status) status.innerHTML = `<div style="color:#ff7a86;padding:8px;border:1px solid #55242e;border-radius:8px;background:#1a0f14">❌ ${esc(res.error)}</div>`;
+      return toast(res.error,true);
+    }
+    if(status) status.innerHTML = `<div style="padding:8px;border:1px solid #1e4a3a;border-radius:8px;background:#102c38">✅ <strong>${esc(res.name)}</strong> • ${res.calories} kcal • P ${res.protein_g||0}g • C ${res.carbs_g||0}g • F ${res.fat_g||0}g<br><small class="muted">Added to selection - you can add more or log now</small></div>`;
+    addSelected({name:res.name, kcal:res.calories, protein:res.protein_g||0, carbs:res.carbs_g||0, fat:res.fat_g||0});
+    toast(`Added ${res.name}`);
+  }catch(e){
+    if(status) status.innerHTML = `<span style="color:#ff7a86">❌ ${esc(e.message)}</span>`;
+    toast(e.message,true);
+  }finally{
+    if(logBtn){ logBtn.disabled=false; renderSelected(); }
+  }
 }
 async function handlePhotoUpload(file){
   if(!file) return; toast("Uploading photo...");
@@ -402,9 +432,11 @@ function renderLast7(){
   el.innerHTML=`<div class="row"><div>Meals</div><span>${d.meals.length} items</span></div><div class="row"><div>Avg kcal</div><span>${d.meals.length?Math.round(d.totalCal/7):0} kcal</span></div><div class="row"><div>Workouts</div><span>${d.workoutCount}</span></div><div class="row"><div>Steps avg</div><span>${d.steps.length? Math.round(d.steps.reduce((s,x)=>s+x.steps,0)/7).toLocaleString():0}</span></div>`;
 }
 async function generateReport(){
-  const btn=$("#genReportBtn"); if(btn){ btn.disabled=true; btn.textContent="Generating..."; }
-  try{ const last7=getLast7Data(); const reportText=await AI.generateWeeklyReport(profile, last7); const el=$("#weeklyReport"); if(el) el.innerHTML=`<div class="ai-text">${esc(reportText)}</div>`; renderLast7(); }
-  catch(e){ toast(e.message,true) } finally{ if(btn){ btn.disabled=false; btn.textContent="Generate This Week's Report" } }
+  const btn=$("#genReportBtn"); const out=$("#weeklyReport");
+  if(btn){ btn.disabled=true; btn.innerHTML='<div class="spinner" style="display:inline-block;width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:6px"></div> Generating AI Report...'; }
+  if(out){ out.innerHTML='<div class="ai-loading"><div class="spinner"></div><div><strong>Generating weekly report...</strong><br><small>Analyzing 7 days data with Gemini</small></div></div>'; }
+  try{ const last7=getLast7Data(); const reportText=await AI.generateWeeklyReport(profile, last7); if(out) out.innerHTML=`<div class="ai-text">${esc(reportText)}</div>`; renderLast7(); }
+  catch(e){ if(out) out.innerHTML=`<span style="color:#ff7a86">❌ ${esc(e.message)}</span>`; toast(e.message,true) } finally{ if(btn){ btn.disabled=false; btn.textContent="Generate This Week's Report" } }
 }
 function renderHistory(){
   if(!records.body.length) return;
@@ -414,7 +446,8 @@ function renderHistory(){
   if($("#allLogs")){
     $("#allLogs").innerHTML=[...records.meals,...records.workoutSessions,...records.body].sort((a,b)=>new Date(b.logged_at)-new Date(a.logged_at)).slice(0,40).map(x=>{
       const name=x.meal_name||x.session_name||`Weight ${x.weight_kg}kg`;
-      return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleString()}</small></div></div>`;
+      const isMeal = !!x.meal_name;
+      return `<div class="row"><div><strong>${esc(name)}</strong><small>${new Date(x.logged_at).toLocaleString()}</small></div>${isMeal?`<button class="delete-btn" onclick="deleteMealLog('${x.id}')">Remove</button>`:''}</div>`;
     }).join("") || '<div class="empty">No logs</div>';
   }
 }
@@ -438,12 +471,18 @@ function buildProfileForm(){
     if(error) return toast(error.message,true); profile=data; toast("Profile updated"); render();
   };
 }
-function exportJSON(){ const blob=new Blob([JSON.stringify({profile, records},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`fitness-v7.4-export-${todayStr()}.json`; a.click(); }
+function exportJSON(){ const blob=new Blob([JSON.stringify({profile, records},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`fitness-v7.5-export-${todayStr()}.json`; a.click(); }
 $("#deleteAccountData") && ($("#deleteAccountData").onclick=async()=>{
   if(!confirm("Delete all health records?")) return;
   for(const t of ["meal_logs","activity_logs","body_logs","workout_sessions","water_logs","sleep_logs","steps_logs","heart_rate_logs"]){ await db.from(t).delete().eq("user_id",user.id); }
   await loadRecords(); render(); toast("Deleted");
 });
+window.deleteMealLog = async(id)=>{
+  if(!confirm("Remove this meal? This will delete the log from Supabase.")) return;
+  const {error} = await db.from("meal_logs").delete().eq("id", id).eq("user_id", user.id);
+  if(error) return toast(error.message,true);
+  await loadRecords(); render(); toast("Meal removed");
+};
 window.handleGarminImport = async(fileOverride)=>{
   const file=fileOverride || $("#garminFile")?.files[0]; if(!file) return toast("Select file",true);
   if(file.name.toLowerCase().endsWith('.fit')) return handleFitImport(file);
@@ -479,9 +518,8 @@ window.handleFitImport = async(fileOverride)=>{
   const file = fileOverride || document.getElementById("fitFile")?.files[0] || document.getElementById("quickImportFile")?.files[0];
   if(!file) return toast("Select .fit file",true);
   const statusEl = document.getElementById("fitStatus") || document.getElementById("quickImportStatus") || document.getElementById("garminStatus");
-  if(statusEl) statusEl.textContent = "Parsing FIT FULL...";
+  if(statusEl) statusEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div> Parsing FIT FULL ${esc(file.name)}...</div>`;
   try{
-    // NEW: Show full report immediately
     if(window.GpxReport){ try{ await GpxReport.loadFile(file); switchView('gpxReportView'); }catch(e){ console.warn("GPX report load failed",e); } }
     const activities = await Integrations.importFit(file);
     if(!activities.length) throw new Error("No sessions in FIT");
@@ -492,13 +530,13 @@ window.handleFitImport = async(fileOverride)=>{
       inserted++;
     }
     await db.from('integration_imports').insert({user_id:user.id, provider:'fit', file_name:file.name, records_count:inserted});
-    if(statusEl) statusEl.textContent = `✅ Imported ${inserted} FIT FULL: ${activities.map(a=>`${a.activity_name} ${a.distance_km}km ${a.duration_minutes}min`).join(' | ')} - Check GPX Report tab for full data`;
+    if(statusEl) statusEl.textContent = `✅ Imported ${inserted} FIT FULL: ${activities.map(a=>`${a.activity_name} ${a.distance_km}km ${a.duration_minutes}min`).join(' | ')} - Check GPX Report tab`;
     await loadRecords(); render(); toast(`FIT FULL imported ${inserted} + full report shown`);
-  }catch(e){ console.error(e); if(statusEl) statusEl.textContent = "❌ "+e.message; toast(e.message,true); }
+  }catch(e){ console.error(e); if(statusEl) statusEl.innerHTML = `<span style="color:#ff7a86">❌ ${esc(e.message)}</span>`; toast(e.message,true); }
 };
 window.handleQuickImport = async()=>{
   const file=document.getElementById("quickImportFile")?.files[0]; const type=document.getElementById("quickImportType")?.value; if(!file) return toast("Select file",true);
-  const st=document.getElementById("quickImportStatus"); if(st) st.textContent="Importing...";
+  const st=document.getElementById("quickImportStatus"); if(st) st.innerHTML='<div class="ai-loading"><div class="spinner"></div> Importing...</div>';
   try{
     const l=file.name.toLowerCase(); if(l.endsWith('.gpx') || type==='gpx') return handleGpxImport(file);
     if(l.endsWith('.fit') || type==='fit') return handleFitImport(file);
@@ -512,9 +550,8 @@ window.handleGpxImport = async(fileOverride)=>{
   const file=fileOverride||document.getElementById('gpxFile')?.files[0]||document.getElementById('fitFile')?.files[0]||document.getElementById('quickImportFile')?.files[0];
   if(!file) return toast('Select .gpx',true);
   const el=document.getElementById('gpxStatus')||document.getElementById('fitStatus')||document.getElementById('quickImportStatus');
-  if(el) el.textContent=`Parsing GPX FULL ${file.name}...`;
+  if(el) el.innerHTML=`<div class="ai-loading"><div class="spinner"></div> Parsing GPX FULL ${esc(file.name)}...</div>`;
   try{
-    // NEW: Show full report immediately with ALL data
     if(window.GpxReport){ try{ await GpxReport.loadFile(file); switchView('gpxReportView'); }catch(e){ console.warn("GPX report load",e); } }
     const acts=await Integrations.importGpx(file);
     let ins=0;
@@ -525,5 +562,5 @@ window.handleGpxImport = async(fileOverride)=>{
     }
     if(el) el.textContent=`✅ Imported ${ins} GPX FULL: ${acts.map(a=>`${a.activity_name} ${a.distance_km}km`).join(' | ')} - Full report in GPX Report tab`;
     await loadRecords(); render(); toast(`GPX FULL imported ${ins} + full report`);
-  }catch(e){ if(el) el.textContent='❌ '+e.message; toast(e.message,true); }
+  }catch(e){ if(el) el.innerHTML=`<span style="color:#ff7a86">❌ ${esc(e.message)}</span>`; toast(e.message,true); }
 };
